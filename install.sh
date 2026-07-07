@@ -264,7 +264,7 @@ obtain_ssl() {
       PORT80_CMD=$(ps -p "$PORT80_USER" -o comm= 2>/dev/null || echo "")
       if [ -n "$PORT80_CMD" ] && [ "$PORT80_CMD" != "docker-proxy" ] && [ "$PORT80_CMD" != "containerd-shim" ]; then
         warn "Порт 80 уже занят процессом '$PORT80_CMD' (PID $PORT80_USER). Docker не сможет биндить порт, certbot не получит сертификат."
-        echo "  Остановите конфликтующий процесс (например 'sudo systemctl stop nginx' / 'sudo systemctl stop apache2') и повторите."
+        echo "  Остановите конфликтующий процесс (например 'systemctl stop nginx' / 'systemctl stop apache2') и повторите."
         exit 1
       fi
     fi
@@ -445,7 +445,7 @@ build_and_start() {
   else
     # При внешнем nginx — копируем dist в нужную папку
     info "Копирование фронтенда в /var/www/stealthnet..."
-    sudo mkdir -p /var/www/stealthnet
+    mkdir -p /var/www/stealthnet
     docker compose cp frontend:/dist/. /var/www/stealthnet/ 2>/dev/null || {
       # Fallback: копируем из volume
       docker run --rm -v stealthnet_frontend_dist:/src -v /var/www/stealthnet:/dst alpine sh -c "cp -r /src/* /dst/"
