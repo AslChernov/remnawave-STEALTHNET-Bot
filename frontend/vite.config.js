@@ -18,8 +18,8 @@ export default defineConfig({
             ],
             manifest: {
                 name: "STEALTHNET",
-                short_name: "STEALTHNET",
-                description: "Личный кабинет и админка STEALTHNET — VPN на базе Remnawave",
+                short_name: "VPN",
+                description: "Личный кабинет и админка VPN на базе Remnawave",
                 lang: "ru",
                 start_url: "/cabinet",
                 scope: "/",
@@ -110,6 +110,7 @@ export default defineConfig({
     },
     server: {
         port: 5173,
+        fs: { allow: [path.resolve(__dirname, "..")] },
         proxy: {
             "/api": { target: "http://localhost:5001", changeOrigin: true },
         },

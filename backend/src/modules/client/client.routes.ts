@@ -7428,8 +7428,9 @@ publicConfigRouter.get("/config", async (req, res) => {
  */
 publicConfigRouter.get("/manifest.webmanifest", async (_req, res) => {
   try {
-    const cfg = (await getSystemConfig().catch(() => null)) as { serviceName?: string | null; favicon?: string | null } | null;
+    const cfg = (await getSystemConfig().catch(() => null)) as { serviceName?: string | null; serviceDescription?: string | null; favicon?: string | null } | null;
     const brand = (cfg?.serviceName ?? "").trim() || "STEALTHNET";
+    const description = (cfg?.serviceDescription ?? "").trim() || `${brand} — личный кабинет и админка VPN`;
     const favicon = (cfg?.favicon ?? "").trim() || null;
 
     const icons = favicon
@@ -7448,8 +7449,8 @@ publicConfigRouter.get("/manifest.webmanifest", async (_req, res) => {
     const manifest = {
       name: brand,
       short_name: brand.length <= 12 ? brand : brand.slice(0, 12),
-      description: `${brand} — личный кабинет и админка VPN`,
       lang: "ru",
+      description,
       start_url: "/cabinet",
       scope: "/",
       display: "standalone",
@@ -7746,6 +7747,4 @@ publicConfigRouter.get("/singbox-tariffs", async (req, res) => {
     return res.status(500).json({ message: "Ошибка загрузки тарифов Sing-box" });
   }
 });
-
-
 
