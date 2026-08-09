@@ -98,10 +98,11 @@ const SYSTEM_CONFIG_KEYS = [
   "default_referral_percent", "referral_percent_level_2", "referral_percent_level_3",
   "trial_days", "trial_squad_uuid", "trial_device_limit", "trial_traffic_limit",
   "service_name", "logo", "logo_bot", "favicon", "remna_client_url",
-  // UI design selector for client cabinet/mini app: "classic" (default) | "stealth"
+  // UI design selector for client cabinet/mini app: "classic" (default) | "stealth" | "aurora"
   "cabinet_design",
   "smtp_host", "smtp_port", "smtp_secure", "smtp_user", "smtp_password",
   "smtp_from_email", "smtp_from_name", "public_app_url",
+  "mail_provider", "resend_api_key", "resend_from_email",
   "telegram_bot_token", "telegram_bot_username", "bot_admin_telegram_ids",
   "notification_telegram_group_id",
   "notification_managers_group_id",
@@ -184,6 +185,10 @@ const SYSTEM_CONFIG_KEYS = [
   "google_analytics_id", "yandex_metrika_id", // Маркетинг: счётчики для кабинета
   "auto_broadcast_cron", // Расписание авто-рассылки (cron, например "0 9 * * *" = 9:00 каждый день)
   "skip_email_verification", // Регистрация без подтверждения почты: true/false
+  "onboarding_email_required", // Обязательна ли привязка email на онбординге мини-аппа: true/false
+  "stealth_accent", // Акцентный цвет stealth-мини-аппа (hex #RRGGBB)
+  "stealth_hero_image", // Кастомная картинка вместо щита в hero (base64 data URL / URL)
+  "multi_subscriptions_enabled", // Мульти-подписки: вкл (default) = несколько подписок; выкл = одна подписка (hard replace)
   // Антибот-защита регистраций
   "signup_protection_enabled", // Master switch: включает email-фильтр и rate-limit по IP
   "email_domain_blocklist", // Дополнительный список доменов через запятую (расширяет встроенный)
@@ -217,7 +222,7 @@ const SYSTEM_CONFIG_KEYS = [
   "landing_feature_3_label", "landing_feature_3_sub", "landing_feature_4_label", "landing_feature_4_sub",
   "landing_feature_5_label", "landing_feature_5_sub",
   "video_instructions_enabled", "video_instructions",
-  "notification_topic_backups", "auto_backup_enabled", "auto_backup_cron",
+  "notification_topic_backups", "auto_backup_enabled", "auto_backup_cron", "backup_retention_days",
   "landing_benefits_title", "landing_benefits_subtitle",
   "landing_benefit_1_title", "landing_benefit_1_desc", "landing_benefit_2_title", "landing_benefit_2_desc",
   "landing_benefit_3_title", "landing_benefit_3_desc", "landing_benefit_4_title", "landing_benefit_4_desc",
@@ -310,6 +315,8 @@ export type BotMenuTexts = {
   trafficPrefix?: string;
   linkLabel?: string;
   chooseAction?: string;
+  subsCountLabel?: string;
+  subLineFormat?: string;
 };
 
 const DEFAULT_BOT_MENU_TEXTS: Required<BotMenuTexts> = {
@@ -330,6 +337,8 @@ const DEFAULT_BOT_MENU_TEXTS: Required<BotMenuTexts> = {
   trafficPrefix: "📈 Трафик — ",
   linkLabel: "🔗 Ссылка подключения:",
   chooseAction: "Выберите действие:",
+  subsCountLabel: "🔢 Подписок: ",
+  subLineFormat: "{{SUB_STATUS}} {{SUB_TYPE}} Подписка #{{SUB_NUM}} — **{{SUB_DAYS}}** до {{SUB_DATE}}{{SUB_TRAFFIC}}",
 };
 
 export type BotTariffLineFields = {
@@ -602,7 +611,7 @@ async function loadSystemConfigFromDb() {
     logo: map.logo || null,
     logoBot: map.logo_bot || null,
     favicon: map.favicon || null,
-    cabinetDesign: (map.cabinet_design === "stealth" ? "stealth" : "classic") as "classic" | "stealth",
+    cabinetDesign: (["stealth", "aurora"].includes(map.cabinet_design ?? "") ? map.cabinet_design : "classic") as "classic" | "stealth" | "aurora",
     remnaClientUrl: map.remna_client_url || null,
     smtpHost: map.smtp_host || null,
     smtpPort: map.smtp_port != null && map.smtp_port !== "" ? parseInt(map.smtp_port, 10) : 587,
@@ -611,6 +620,9 @@ async function loadSystemConfigFromDb() {
     smtpPassword: map.smtp_password || null,
     smtpFromEmail: map.smtp_from_email || null,
     smtpFromName: map.smtp_from_name || null,
+    mailProvider: (map.mail_provider === "resend" ? "resend" : "smtp") as "smtp" | "resend",
+    resendApiKey: map.resend_api_key || null,
+    resendFromEmail: map.resend_from_email || null,
     publicAppUrl: map.public_app_url || null,
     telegramBotToken: map.telegram_bot_token || null,
     telegramBotUsername: map.telegram_bot_username || null,
@@ -630,6 +642,16 @@ async function loadSystemConfigFromDb() {
     notificationTopicBackups: (map.notification_topic_backups ?? "").trim() || null,
     autoBackupEnabled: map.auto_backup_enabled === "true" || map.auto_backup_enabled === "1",
     autoBackupCron: (map.auto_backup_cron ?? "").trim() || null,
+    /// Сколько дней хранить бэкапы на диске. 0 = хранить вечно. По умолчанию 30:
+    /// без чистки папка росла бесконечно (~1 МБ на бэкап).
+    backupRetentionDays: (() => {
+      const raw = (map.backup_retention_days ?? "").trim();
+      // ⚠️ Number("") === 0, а не NaN — без явной проверки на пустую строку
+      // незаданная настройка означала бы «хранить вечно» вместо дефолта.
+      if (!raw) return 30;
+      const v = Number(raw);
+      return Number.isFinite(v) && v >= 0 ? v : 30;
+    })(),
     plategaMerchantId: map.platega_merchant_id || null,
     plategaWebhookSecret: map.platega_webhook_secret || null,
     plategaSecret: map.platega_secret || null,
@@ -674,6 +696,11 @@ async function loadSystemConfigFromDb() {
     groqFallback3: (map.groq_fallback_3 ?? "").trim() || null,
     aiSystemPrompt: map.ai_system_prompt || "Ты — лучший менеджер техподдержки VPN-сервиса. Твоя цель — вежливо, быстро и точно помогать пользователям с настройкой VPN, тарифами и решением технических проблем. Отвечай кратко и по делу.",
     skipEmailVerification: map.skip_email_verification === "true" || map.skip_email_verification === "1",
+    onboardingEmailRequired: map.onboarding_email_required === "true" || map.onboarding_email_required === "1",
+    stealthAccent: (map.stealth_accent ?? "").trim() || null,
+    stealthHeroImage: map.stealth_hero_image || null,
+    // Default FALSE: по умолчанию одна подписка (hard-replace); мульти — только если явно "true".
+    multiSubscriptionsEnabled: (map.multi_subscriptions_enabled ?? "false").trim() !== "false",
     passwordResetEnabled: map.password_reset_enabled === "true" || map.password_reset_enabled === "1",
     /** Master switch для антибот-фильтра. По умолчанию включён. */
     signupProtectionEnabled: (map.signup_protection_enabled ?? "true").trim() !== "false",
@@ -1117,7 +1144,11 @@ function hasLeadingEmoji(label: string): boolean {
  * с дефолтом порта 587. При незаполненном порте фронт шёл в direct, а бэк отвечал
  * «Требуется верификация» — юзер упирался в тупик. Критерий обязан совпадать.
  */
-export function isSystemSmtpConfigured(cfg: { smtpHost?: string | null; smtpPort?: number | null; smtpFromEmail?: string | null }): boolean {
+export function isSystemSmtpConfigured(cfg: { smtpHost?: string | null; smtpPort?: number | null; smtpFromEmail?: string | null; mailProvider?: string | null; resendApiKey?: string | null; resendFromEmail?: string | null }): boolean {
+  // Resend-провайдер: достаточно ключа и адреса отправителя (from-email).
+  if (cfg.mailProvider === "resend") {
+    return Boolean(cfg.resendApiKey?.trim() && (cfg.resendFromEmail?.trim() || cfg.smtpFromEmail?.trim()));
+  }
   return Boolean(cfg.smtpHost?.trim() && cfg.smtpPort && cfg.smtpFromEmail?.trim());
 }
 
@@ -1269,6 +1300,10 @@ export async function getPublicConfig(_forCloneBot?: { markupPercent?: number | 
     ),
     paymentProviders: full.paymentProviders,
     skipEmailVerification: full.skipEmailVerification ?? false,
+    onboardingEmailRequired: full.onboardingEmailRequired ?? false,
+    stealthAccent: full.stealthAccent ?? null,
+    stealthHeroImage: full.stealthHeroImage ?? null,
+    multiSubscriptionsEnabled: full.multiSubscriptionsEnabled ?? false,
     passwordResetEnabled: full.passwordResetEnabled ?? false,
     // фронту нужен флаг — настроен ли SMTP.
     // Если SMTP не настроен или skipEmailVerification=true → email привязывается

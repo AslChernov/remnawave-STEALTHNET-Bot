@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, Inbox, ChevronRight, Repeat2, Search, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, ChevronRight, Repeat2, Search, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import {
   webhookInboxApi,
   type WebhookEventListItem,
@@ -92,30 +92,32 @@ export function AdminWebhookInboxPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Inbox className="h-6 w-6 text-emerald-500" />
-          <h1 className="text-2xl font-bold">Webhook inbox</h1>
+    <div className="flex flex-col gap-3.5 relative">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between !bg-transparent !border-0 ! !shadow-none">
+        <div className="flex items-start gap-3">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Webhook inbox</h1>
+            <p className="text-[12.5px] text-muted-foreground mt-[3px]">Входящие вебхуки платёжных провайдеров: статус обработки и replay.</p>
+          </div>
         </div>
-        <Button onClick={() => load(true)} variant="outline" size="sm" disabled={loading} className="gap-1.5">
+        <Button onClick={() => load(true)} variant="outline" size="sm" disabled={loading} className="gap-1.5 rounded-xl">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Обновить
         </Button>
       </div>
 
-      <Card className="mb-4">
+      <Card className="bg-card border-border rounded-2xl">
         <CardContent className="p-4 grid gap-3 md:grid-cols-3">
           <div>
             <Label className="text-xs">Провайдер</Label>
-            <select value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+            <select value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1.5 flex h-9 w-full rounded-xl border border-border bg-foreground/[0.03] dark:bg-white/[0.02] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
               <option value="">Все</option>
               {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           <div>
             <Label className="text-xs">Результат</Label>
-            <select value={outcome} onChange={(e) => setOutcome(e.target.value)} className="mt-1.5 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+            <select value={outcome} onChange={(e) => setOutcome(e.target.value)} className="mt-1.5 flex h-9 w-full rounded-xl border border-border bg-foreground/[0.03] dark:bg-white/[0.02] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
               <option value="">Все</option>
               {Object.entries(OUTCOME_META).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
             </select>
@@ -130,9 +132,9 @@ export function AdminWebhookInboxPage() {
         </CardContent>
       </Card>
 
-      {error ? <div className="rounded-lg border border-red-500/30 bg-red-50 dark:bg-red-950/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">{error}</div> : null}
+      {error ? <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500 dark:text-red-400">{error}</div> : null}
 
-      <Card>
+      <Card className="bg-card border-border rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           {items.length === 0 && !loading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
@@ -172,9 +174,9 @@ export function AdminWebhookInboxPage() {
       </Card>
 
       <Dialog open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-[15px] font-bold">
               {selectedDetail?.provider}
               <span className="text-xs text-muted-foreground font-mono">{selectedDetail?.id.slice(0, 12)}…</span>
             </DialogTitle>

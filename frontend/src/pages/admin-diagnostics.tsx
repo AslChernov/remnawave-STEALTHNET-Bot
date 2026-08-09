@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, RefreshCw, Activity, Clock, FileText, ShieldOff, Play, CheckCircle2, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
 import { diagnosticsApi, adminSecurityApi, type HealthResponse, type CronEntry } from "@/lib/admin-extras-api";
+import { ConsoleAccessCard } from "@/components/console-access-card";
 import { fmtMsk } from "@/lib/datetime";
 
 const STATUS_META = {
@@ -107,22 +108,26 @@ export function AdminDiagnosticsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-6 w-6 text-emerald-500" />
-          <h1 className="text-2xl font-bold">Диагностика</h1>
+    <div className="flex flex-col gap-3.5 relative">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between !bg-transparent !border-0 ! !shadow-none">
+        <div className="flex items-start gap-3">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Диагностика</h1>
+            <p className="text-[12.5px] text-muted-foreground mt-[3px]">Health-проверки, cron-монитор и логи API-контейнера.</p>
+          </div>
         </div>
-        <Button onClick={handleLogoutAll} variant="outline" size="sm" className="gap-1.5 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10">
+        <Button onClick={handleLogoutAll} variant="outline" size="sm" className="gap-1.5 rounded-xl text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10">
           <ShieldOff className="h-4 w-4" />
-          Logout all admins
+          Разлогинить всех админов
         </Button>
       </div>
 
-      {error ? <div className="rounded-lg border border-red-500/30 bg-red-50 dark:bg-red-950/30 p-4 text-sm text-red-700 dark:text-red-300 mb-4">{error}</div> : null}
+      <ConsoleAccessCard token={token} />
+
+      {error ? <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500 dark:text-red-400">{error}</div> : null}
 
       {/* Health */}
-      <Card className="mb-4">
+      <Card className="bg-card border-border rounded-2xl">
         <CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -163,7 +168,7 @@ export function AdminDiagnosticsPage() {
       </Card>
 
       {/* Cron monitor */}
-      <Card className="mb-4">
+      <Card className="bg-card border-border rounded-2xl">
         <CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -220,7 +225,7 @@ export function AdminDiagnosticsPage() {
       </Card>
 
       {/* Logs viewer */}
-      <Card>
+      <Card className="bg-card border-border rounded-2xl">
         <CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
