@@ -201,7 +201,7 @@ export function AdminTicketsPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-[13.5px] font-bold tracking-tight text-foreground truncate">
+              <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground truncate">
                 {detail.subject}
               </h1>
               <p className="text-xs text-muted-foreground truncate">
@@ -355,7 +355,7 @@ export function AdminTicketsPage() {
       >
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               Тикеты
             </h1>
             <div className="flex items-center gap-2 mt-1.5">

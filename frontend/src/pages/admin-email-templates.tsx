@@ -120,7 +120,7 @@ export function AdminEmailTemplatesPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between !bg-transparent !border-0 ! !shadow-none">
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Email-шаблоны</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Email-шаблоны</h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">Системные транзакционные письма (приветствие, оплата, истечение и т.п.)</p>
           </div>
         </div>

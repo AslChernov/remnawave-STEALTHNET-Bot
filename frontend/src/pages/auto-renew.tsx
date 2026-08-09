@@ -219,7 +219,7 @@ export function AutoRenewPage() {
         className="flex items-start gap-4 bg-card border border-border p-4 rounded-2xl"
       >
         <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               Автосписание
             </h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl leading-relaxed">

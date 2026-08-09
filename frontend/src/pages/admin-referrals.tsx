@@ -171,7 +171,7 @@ export function AdminReferralsPage() {
       <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Реферальная программа</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Реферальная программа</h1>
             <p className="mt-1 text-sm text-muted-foreground">Топ-рефереры, поиск, привязка реферера и заработок по уровням</p>
           </div>
         </div>

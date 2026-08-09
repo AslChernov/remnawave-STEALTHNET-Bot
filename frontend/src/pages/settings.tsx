@@ -1075,7 +1075,7 @@ export function SettingsPage() {
         <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-muted blur-3xl pointer-events-none" />
         <div className="relative px-6 py-7 sm:px-8 sm:py-8 flex items-start gap-5">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               {t("admin.settings.title")}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-2 leading-relaxed max-w-2xl">

@@ -370,7 +370,7 @@ export function LandingEditorPage() {
             </Button>
             <div className="h-6 w-px bg-border" />
             <Globe className="h-5 w-5 text-emerald-500" />
-            <h1 className="text-xl font-bold">Редактор лендинга</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Редактор лендинга</h1>
             <div className="ml-2 flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1">
               <Switch checked={landingEnabled} onCheckedChange={handleToggleLanding} />
               <span className={`text-xs font-medium ${landingEnabled ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>

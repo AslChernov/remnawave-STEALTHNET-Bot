@@ -317,7 +317,7 @@ export function RemnaProfilesPage() {
       >
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Config-профили</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Config-профили</h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">Xray-конфигурации с инбаундами. К профилю привязываются ноды, хосты и сквады.</p>
           </div>
         </div>

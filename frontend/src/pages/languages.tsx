@@ -521,7 +521,7 @@ export default function LanguagesPage() {
       >
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               {t("admin.nav.languages", "Языки")}
             </h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">

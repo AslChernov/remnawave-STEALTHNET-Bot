@@ -275,7 +275,7 @@ export function PromoCodesPage() {
             </Button>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold tracking-tight text-foreground">
+                <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
                   {detail.name}
                 </h1>
                 <TypeBadge type={detail.type} />
@@ -380,7 +380,7 @@ export function PromoCodesPage() {
       >
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               Промокоды
             </h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">

@@ -128,7 +128,7 @@ export function WithdrawalsPage() {
       >
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Заявки на вывод</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Заявки на вывод</h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">USDT TRC20 · Минимальная сумма заявки 3000₽ · reject возвращает баланс автоматически.</p>
           </div>
         </div>

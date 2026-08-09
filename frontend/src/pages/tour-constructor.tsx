@@ -603,7 +603,7 @@ export function TourConstructorPage() {
         
         <div className="relative z-10 flex items-center gap-5">
           <div>
-            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground drop-shadow-sm">
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">
               Конструктор тура
             </h1>
             <div className="flex flex-wrap items-center gap-3 mt-2 text-sm font-medium">

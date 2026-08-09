@@ -259,7 +259,7 @@ export function GramadsPromoPage() {
       <div className="flex items-center justify-between flex-wrap gap-3 bg-card border border-border p-4 rounded-2xl">
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">{t("admin.gramads.title")}</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">{t("admin.gramads.title")}</h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">{t("admin.gramads.subtitle")}</p>
           </div>
         </div>

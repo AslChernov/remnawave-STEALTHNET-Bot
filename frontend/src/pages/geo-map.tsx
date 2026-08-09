@@ -203,7 +203,7 @@ export function GeoMapPage() {
       <div className="flex flex-col gap-3.5 relative">
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Карта нод</h1>
+            <h1 className="text-xl font-extrabold tracking-[-0.3px] text-foreground">Карта нод</h1>
             <p className="text-[12.5px] text-muted-foreground mt-[3px]">Живая география нод и подключений клиентов.</p>
           </div>
         </div>
