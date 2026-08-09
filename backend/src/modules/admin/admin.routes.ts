@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import multer from "multer";
+import { APP_VERSION } from "../../config/app-version.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma, createPayment } from "../../db.js";
@@ -100,7 +101,7 @@ import {
   auditClientSubscriptions,
 } from "../client/client-bulk-ops.service.js";
 import { getServerStats, getSshConfig, updateSshConfig } from "../server/server.service.js";
-import { syncFromRemna, syncToRemna, createRemnaUsersForClientsWithoutUuid } from "../sync/sync.service.js";
+import { syncFromRemna, syncToRemna, syncSubscriptionsMirror, createRemnaUsersForClientsWithoutUuid } from "../sync/sync.service.js";
 import { distributeReferralRewards } from "../referral/referral.service.js";
 import { markPaymentPaid } from "../payment/mark-paid.service.js";
 // activateTariffForClient больше не используется в admin —
@@ -2708,7 +2709,7 @@ adminRouter.get("/settings", asyncRoute(async (_req, res) => {
 
 /** Версия панели — для мониторинга. Под auth, чтобы не светить наружу. */
 adminRouter.get("/version", asyncRoute(async (_req, res) => {
-  return res.json({ version: "5.2.0" });
+  return res.json({ version: APP_VERSION });
 }));
 
 /**
@@ -2862,10 +2863,11 @@ const updateSettingsSchema = z.object({
   trialDeviceLimit: z.number().int().min(0).nullable().optional(),
   trialTrafficLimitBytes: z.number().int().min(0).nullable().optional(),
   serviceName: z.string().max(200).optional(),
+  serviceDescription: z.string().max(500).nullable().optional(),
   logo: z.string().max(5_500_000).nullable().optional(),
   logoBot: z.string().max(5_500_000).nullable().optional(),
   favicon: z.string().max(5_500_000).nullable().optional(),
-  cabinetDesign: z.enum(["classic", "stealth"]).optional(),
+  cabinetDesign: z.enum(["classic", "stealth", "aurora"]).optional(),
   cabinetDesignApplyInBrowser: z.boolean().optional(),
   remnaClientUrl: z.string().max(2000).nullable().optional(),
   smtpHost: z.string().max(255).nullable().optional(),
@@ -3268,6 +3270,15 @@ adminRouter.patch("/settings", async (req, res) => {
       where: { key: "service_name" },
       create: { key: "service_name", value: updates.serviceName },
       update: { value: updates.serviceName },
+    });
+    invalidateBrandCache();
+  }
+  if (updates.serviceDescription !== undefined) {
+    const val = updates.serviceDescription ?? "";
+    await prisma.systemSetting.upsert({
+      where: { key: "service_description" },
+      create: { key: "service_description", value: val },
+      update: { value: val },
     });
     invalidateBrandCache();
   }
@@ -4319,7 +4330,13 @@ adminRouter.post("/tickets/:id/messages", uploadTicketAttachment.array("files", 
 adminRouter.post("/sync/from-remna", async (_req, res) => {
   try {
     const result = await syncFromRemna();
-    return res.json(result);
+    // T-remna-mirror: следом переносим в нашу БД состояние подписок
+    // (даты, статус, трафик) — чтобы данные не жили только в Remnawave.
+    const mirror = await syncSubscriptionsMirror().catch((e) => ({
+      ok: false, updated: 0, missing: 0,
+      errors: [e instanceof Error ? e.message : String(e)],
+    }));
+    return res.json({ ...result, mirror });
   } catch (e) {
     console.error("Sync from Remna error:", e);
     return res.status(500).json({
@@ -5409,7 +5426,7 @@ adminRouter.get("/analytics", async (_req, res) => {
 adminRouter.post("/backup/send-to-telegram", asyncRoute(async (_req, res) => {
   const { runAutoBackup } = await import("../backup/auto-backup.scheduler.js");
   try {
-    await runAutoBackup();
+    await runAutoBackup({ force: true });
     return res.json({ ok: true, message: "Бэкап создан и отправлен в Telegram" });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -6,6 +6,7 @@ import { Package, Calendar, Wifi, Smartphone, CreditCard, Loader2, Gift, Tag, Ch
 import { useClientAuth } from "@/contexts/client-auth";
 import { useCabinetDesign } from "@/lib/use-cabinet-design";
 import { StealthTariffs } from "@/pages/cabinet/stealth/stealth-tariffs";
+import { AuroraTariffs } from "@/pages/cabinet/aurora/aurora-tariffs";
 import { api } from "@/lib/api";
 import type { PublicTariffCategory, TariffConversionPreview } from "@/lib/api";
 import { formatRuDays } from "@/lib/i18n";
@@ -96,6 +97,7 @@ function hasExtras(t: TariffForPay): boolean {
 export function ClientTariffsPage() {
   const design = useCabinetDesign();
   if (design === "stealth") return <StealthTariffs />;
+  if (design === "aurora") return <AuroraTariffs />;
   return <ClassicTariffsPage />;
 }
 
@@ -1185,7 +1187,7 @@ function ClassicTariffsPage() {
                           <div className={cn("absolute left-6 p-1.5 rounded-lg transition-colors", c.bg10, c.bg20)}>
                             {payLoading ? <Loader2 className={cn("h-5 w-5 animate-spin", c.text)} /> : p.icon === "crypto" ? <Zap className={cn("h-5 w-5", c.text)} /> : <CreditCard className={cn("h-5 w-5", c.text)} />}
                           </div>
-                          <span className="text-base font-medium">{p.icon === "crypto" ? "⚡" : "💳"} {p.label}</span>
+                          <span className="text-base font-medium">{p.label}</span>
                         </>
                       )}
                     </Button>
@@ -1205,7 +1207,7 @@ function ClassicTariffsPage() {
                           <div className="absolute left-6 p-1.5 rounded-lg bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
                             {payLoading ? <Loader2 className="h-5 w-5 animate-spin text-green-500" /> : <CreditCard className="h-5 w-5 text-green-500" />}
                           </div>
-                          <span className="text-base font-medium">💳 {m.label}</span>
+                          <span className="text-base font-medium">{m.label}</span>
                         </>
                       )}
                     </Button>

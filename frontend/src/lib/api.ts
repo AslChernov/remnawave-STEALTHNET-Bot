@@ -3151,10 +3151,11 @@ export type UpdateSettingsPayload = {
   trialDeviceLimit?: number | null;
   trialTrafficLimitBytes?: number | null;
   serviceName?: string;
+  serviceDescription?: string | null;
   logo?: string | null;
   logoBot?: string | null;
   favicon?: string | null;
-  cabinetDesign?: "classic" | "stealth";
+  cabinetDesign?: "classic" | "stealth" | "aurora";
   remnaClientUrl?: string | null;
   smtpHost?: string | null;
   smtpPort?: number;
@@ -3638,10 +3639,11 @@ export interface AdminSettings {
   trialDeviceLimit?: number | null;
   trialTrafficLimitBytes?: number | null;
   serviceName: string;
+  serviceDescription?: string | null;
   logo?: string | null;
   logoBot?: string | null;
   favicon?: string | null;
-  cabinetDesign?: "classic" | "stealth";
+  cabinetDesign?: "classic" | "stealth" | "aurora";
   remnaClientUrl?: string | null;
   smtpHost?: string | null;
   smtpPort?: number;
@@ -5130,9 +5132,10 @@ export interface PublicConfig {
   defaultLanguage?: string;
   defaultCurrency?: string;
   serviceName: string;
+  serviceDescription?: string | null;
   logo?: string | null;
   favicon?: string | null;
-  cabinetDesign?: "classic" | "stealth";
+  cabinetDesign?: "classic" | "stealth" | "aurora";
   remnaClientUrl?: string | null;
   publicAppUrl?: string | null;
   telegramBotUsername?: string | null;

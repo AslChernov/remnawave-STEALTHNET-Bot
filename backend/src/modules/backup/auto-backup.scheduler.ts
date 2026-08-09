@@ -1,6 +1,6 @@
 import cron, { type ScheduledTask } from "node-cron";
 import { getSystemConfig } from "../client/client.service.js";
-import { parseDatabaseUrl, saveBackupToFile } from "./backup.service.js";
+import { parseDatabaseUrl, saveBackupToFile, cleanupOldBackups } from "./backup.service.js";
 import { readFile } from "node:fs/promises";
 import { proxyFetch } from "../proxy-util/proxy-fetch.js";
 import { getProxyUrl } from "../proxy-util/get-proxy-url.js";
@@ -41,9 +41,9 @@ async function sendDocumentToTelegram(
   }
 }
 
-async function runAutoBackup(): Promise<void> {
+async function runAutoBackup(options: { force?: boolean } = {}): Promise<void> {
   const config = await getSystemConfig();
-  if (!config.autoBackupEnabled) return;
+  if (!options.force && !config.autoBackupEnabled) return;
 
   const botToken = config.telegramBotToken?.trim();
   const groupId = config.notificationTelegramGroupId?.trim();
@@ -69,6 +69,12 @@ async function runAutoBackup(): Promise<void> {
   console.log(`${LOG} Creating backup...`);
   try {
     const { fullPath, filename } = await saveBackupToFile(db);
+    // Ретеншен: ежедневные бэкапы иначе копятся бесконечно.
+    try {
+      await cleanupOldBackups(config.backupRetentionDays ?? 30);
+    } catch (e) {
+      console.error(`${LOG} чистка старых бэкапов не удалась:`, e);
+    }
     const fileBuffer = await readFile(fullPath);
     const sizeMb = (fileBuffer.length / 1024 / 1024).toFixed(2);
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");

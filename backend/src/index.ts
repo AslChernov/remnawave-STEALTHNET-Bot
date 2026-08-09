@@ -4,9 +4,11 @@ import { installLogCapture } from "./modules/diagnostics/log-buffer.js";
 installLogCapture();
 
 import app from "./app.js";
+import { APP_VERSION } from "./config/app-version.js";
 import { env } from "./config/index.js";
 import { prisma } from "./db.js";
 import { ensureFirstAdmin } from "./modules/auth/auth.service.js";
+import { ensureConsoleAccess } from "./modules/console/console.service.js";
 import { ensureSystemSettings } from "./scripts/seed-system-settings.js";
 import { startAutoBroadcastScheduler, stopAutoBroadcastScheduler } from "./modules/auto-broadcast/auto-broadcast-scheduler.js";
 import { startContestDailyReminderScheduler, stopContestDailyReminderScheduler } from "./modules/contest/contest-daily-reminder-scheduler.js";
@@ -24,6 +26,7 @@ async function main() {
 
   await ensureFirstAdmin(env);
   await ensureSystemSettings();
+  await ensureConsoleAccess();
   await ensureTheme();
   try {
     const result = await migrateLandingToBlocks();
@@ -69,7 +72,7 @@ async function main() {
   registerCron({ name: "marketplace-heartbeat", cron: "*/10 * * * *", description: "Heartbeat в маркетплейс-хаб" });
 
   const server = app.listen(env.PORT, "0.0.0.0", () => {
-    console.log(`API v5.2.0 listening on port ${env.PORT}`);
+    console.log(`API v${APP_VERSION} listening on port ${env.PORT}`);
   });
 
   const shutdown = async () => {
