@@ -60,8 +60,11 @@ async function fetchAllUsers(): Promise<RemnaUser[]> {
   const out: RemnaUser[] = [];
   let start = 0;
   for (;;) {
-    const raw = (await remnaGetUsers({ size: PAGE, start })) as Record<string, unknown>;
-    const resp = (raw?.response ?? raw) as Record<string, unknown>;
+    // remnaFetch отдаёт обёртку { data, error, status } — тело лежит в data,
+    // а сама Remnawave заворачивает полезную нагрузку ещё и в response.
+    const res = (await remnaGetUsers({ size: PAGE, start })) as { data?: unknown };
+    const body = (res?.data ?? res) as Record<string, unknown>;
+    const resp = (body?.response ?? body) as Record<string, unknown>;
     const batch = (resp?.users ?? resp?.items ?? []) as RemnaUser[];
     if (!Array.isArray(batch) || batch.length === 0) break;
     out.push(...batch);
