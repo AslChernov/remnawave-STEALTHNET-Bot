@@ -6203,6 +6203,9 @@ clientRouter.post("/rollypay/create-payment", async (req, res) => {
           include: { priceOptions: true },
         });
         if (!tariff) return res.status(400).json({ message: "Тариф не найден" });
+        // Валюту берём У ТАРИФА: мини-аппы её в запросе не передают, а дефолт
+        // «USD» ломает RUB-only провайдера (RollyPay отвечает 400).
+        currencyUpper = (tariff.currency ?? currencyUpper).toUpperCase();
         // кулдаун ПРОДЛЕНИЯ существующей подписки.
         // Применяется только при продлении (extendsSecondarySubId) — новые покупки этого
         // же тарифа как доп. подписок не блокируются.
