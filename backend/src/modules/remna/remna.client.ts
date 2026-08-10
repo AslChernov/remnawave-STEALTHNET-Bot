@@ -155,6 +155,18 @@ function toUserIds(ids: (string | number)[]): number[] {
   return ids.map((v) => Number(String(v).trim())).filter((v) => Number.isFinite(v) && v > 0);
 }
 
+/**
+ * Тело массовых ручек `/api/users/bulk/*`.
+ *
+ * ⚠️ Remnawave 3.x ждёт `userIds` МАССИВОМ ЧИСЕЛ; поля `uuids` больше нет —
+ * со старым телом ручка отвечает 400 «Validation failed», и массовая
+ * операция молча не применяется. На 2.x остаются строковые `uuids`.
+ */
+function bulkUserRef(ids: string[]): Record<string, unknown> {
+  const allNumeric = ids.length > 0 && ids.every((v) => /^\d+$/.test(String(v).trim()));
+  return allNumeric ? { userIds: toUserIds(ids) } : { uuids: ids };
+}
+
 export function extractRemnaUuid(d: unknown): string | null {
   if (!d || typeof d !== "object") return null;
   const o = d as Record<string, unknown>;
@@ -775,19 +787,19 @@ export function remnaGetHostTags() {
 
 /** POST /api/users/bulk/reset-traffic — сброс трафика пачке юзеров */
 export function remnaUsersBulkResetTraffic(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/reset-traffic", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/reset-traffic", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/revoke-subscription — перевыпуск подписки пачке */
 export function remnaUsersBulkRevoke(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/revoke-subscription", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/revoke-subscription", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/delete — удаление пачки юзеров из Remna */
 export function remnaUsersBulkDelete(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/delete", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/delete", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/update-squads — назначить сквады пачке */
 export function remnaUsersBulkUpdateSquads(uuids: string[], activeInternalSquads: string[]) {
-  return remnaFetch("/api/users/bulk/update-squads", { method: "POST", body: JSON.stringify({ uuids, activeInternalSquads }) });
+  return remnaFetch("/api/users/bulk/update-squads", { method: "POST", body: JSON.stringify({ ...bulkUserRef(uuids), activeInternalSquads }) });
 }
 
 /** GET /api/node-plugins — список плагинов нод */
