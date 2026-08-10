@@ -150,9 +150,32 @@ function pickUserId(v: unknown): string | null {
   return null;
 }
 
+/**
+ * Ссылка на пользователя в теле HWID-запросов.
+ *
+ * ⚠️ Remnawave 3.x принимает `userId` ЧИСЛОМ; поля `userUuid` больше нет —
+ * со старым телом эндпоинт отвечает 400 «Validation failed», и устройство
+ * не удаляется. На 2.x остаётся прежний строковый `userUuid`.
+ */
+function hwidUserRef(id: string): Record<string, unknown> {
+  return /^\d+$/.test(id) ? { userId: Number(id) } : { userUuid: id };
+}
+
 /** Строковые идентификаторы (наш Client.remnawaveUuid) → числовые userIds для Remnawave 3.x. */
 function toUserIds(ids: (string | number)[]): number[] {
   return ids.map((v) => Number(String(v).trim())).filter((v) => Number.isFinite(v) && v > 0);
+}
+
+/**
+ * Тело массовых ручек `/api/users/bulk/*`.
+ *
+ * ⚠️ Remnawave 3.x ждёт `userIds` МАССИВОМ ЧИСЕЛ; поля `uuids` больше нет —
+ * со старым телом ручка отвечает 400 «Validation failed», и массовая
+ * операция молча не применяется. На 2.x остаются строковые `uuids`.
+ */
+function bulkUserRef(ids: string[]): Record<string, unknown> {
+  const allNumeric = ids.length > 0 && ids.every((v) => /^\d+$/.test(String(v).trim()));
+  return allNumeric ? { userIds: toUserIds(ids) } : { uuids: ids };
 }
 
 export function extractRemnaUuid(d: unknown): string | null {
@@ -455,7 +478,7 @@ export function remnaGetUserHwidDevices(userUuid: string) {
 export function remnaDeleteUserHwidDevice(userUuid: string, hwid: string) {
   return remnaFetch<unknown>("/api/hwid/devices/delete", {
     method: "POST",
-    body: JSON.stringify({ userUuid, hwid }),
+    body: JSON.stringify({ ...hwidUserRef(userUuid), hwid }),
   });
 }
 
@@ -781,19 +804,19 @@ export function remnaGetHostTags() {
 
 /** POST /api/users/bulk/reset-traffic — сброс трафика пачке юзеров */
 export function remnaUsersBulkResetTraffic(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/reset-traffic", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/reset-traffic", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/revoke-subscription — перевыпуск подписки пачке */
 export function remnaUsersBulkRevoke(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/revoke-subscription", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/revoke-subscription", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/delete — удаление пачки юзеров из Remna */
 export function remnaUsersBulkDelete(uuids: string[]) {
-  return remnaFetch("/api/users/bulk/delete", { method: "POST", body: JSON.stringify({ uuids }) });
+  return remnaFetch("/api/users/bulk/delete", { method: "POST", body: JSON.stringify(bulkUserRef(uuids)) });
 }
 /** POST /api/users/bulk/update-squads — назначить сквады пачке */
 export function remnaUsersBulkUpdateSquads(uuids: string[], activeInternalSquads: string[]) {
-  return remnaFetch("/api/users/bulk/update-squads", { method: "POST", body: JSON.stringify({ uuids, activeInternalSquads }) });
+  return remnaFetch("/api/users/bulk/update-squads", { method: "POST", body: JSON.stringify({ ...bulkUserRef(uuids), activeInternalSquads }) });
 }
 
 /** GET /api/node-plugins — список плагинов нод */
@@ -846,11 +869,11 @@ export function remnaGetUserDevices(userUuid: string) {
 }
 /** POST /api/hwid/devices/delete — удалить одно устройство */
 export function remnaDeleteUserDevice(userUuid: string, hwid: string) {
-  return remnaFetch("/api/hwid/devices/delete", { method: "POST", body: JSON.stringify({ userUuid, hwid }) });
+  return remnaFetch("/api/hwid/devices/delete", { method: "POST", body: JSON.stringify({ ...hwidUserRef(userUuid), hwid }) });
 }
 /** POST /api/hwid/devices/delete-all — сбросить все устройства юзера */
 export function remnaDeleteAllUserDevices(userUuid: string) {
-  return remnaFetch("/api/hwid/devices/delete-all", { method: "POST", body: JSON.stringify({ userUuid }) });
+  return remnaFetch("/api/hwid/devices/delete-all", { method: "POST", body: JSON.stringify(hwidUserRef(userUuid)) });
 }
 
 /** сквады: доступные ноды + добавить/убрать юзеров */
