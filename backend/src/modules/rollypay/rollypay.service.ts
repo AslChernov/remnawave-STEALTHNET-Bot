@@ -75,9 +75,16 @@ export async function createRollypayPayment(
   const amount = Number(params.amount);
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Некорректная сумма платежа" };
 
+  // RollyPay — рублёвый шлюз. Отправить другую валюту нельзя: он ответит 400,
+  // а если молча подставить RUB, клиент заплатит долларовую цену рублями.
+  const currency = (params.currency || "RUB").toUpperCase();
+  if (currency !== "RUB") {
+    return { ok: false, error: `RollyPay принимает только рубли, а цена указана в ${currency}` };
+  }
+
   const payload: Record<string, unknown> = {
     amount: amount.toFixed(2),
-    payment_currency: (params.currency || "RUB").toUpperCase(),
+    payment_currency: currency,
     order_id: params.orderId,
     ...(params.description ? { description: params.description } : {}),
     ...(params.customerId ? { customer_id: params.customerId } : {}),
