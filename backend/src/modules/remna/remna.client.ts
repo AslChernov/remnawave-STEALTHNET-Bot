@@ -150,6 +150,17 @@ function pickUserId(v: unknown): string | null {
   return null;
 }
 
+/**
+ * Ссылка на пользователя в теле HWID-запросов.
+ *
+ * ⚠️ Remnawave 3.x принимает `userId` ЧИСЛОМ; поля `userUuid` больше нет —
+ * со старым телом эндпоинт отвечает 400 «Validation failed», и устройство
+ * не удаляется. На 2.x остаётся прежний строковый `userUuid`.
+ */
+function hwidUserRef(id: string): Record<string, unknown> {
+  return /^\d+$/.test(id) ? { userId: Number(id) } : { userUuid: id };
+}
+
 /** Строковые идентификаторы (наш Client.remnawaveUuid) → числовые userIds для Remnawave 3.x. */
 function toUserIds(ids: (string | number)[]): number[] {
   return ids.map((v) => Number(String(v).trim())).filter((v) => Number.isFinite(v) && v > 0);
@@ -455,7 +466,7 @@ export function remnaGetUserHwidDevices(userUuid: string) {
 export function remnaDeleteUserHwidDevice(userUuid: string, hwid: string) {
   return remnaFetch<unknown>("/api/hwid/devices/delete", {
     method: "POST",
-    body: JSON.stringify({ userUuid, hwid }),
+    body: JSON.stringify({ ...hwidUserRef(userUuid), hwid }),
   });
 }
 
@@ -840,11 +851,11 @@ export function remnaGetUserDevices(userUuid: string) {
 }
 /** POST /api/hwid/devices/delete — удалить одно устройство */
 export function remnaDeleteUserDevice(userUuid: string, hwid: string) {
-  return remnaFetch("/api/hwid/devices/delete", { method: "POST", body: JSON.stringify({ userUuid, hwid }) });
+  return remnaFetch("/api/hwid/devices/delete", { method: "POST", body: JSON.stringify({ ...hwidUserRef(userUuid), hwid }) });
 }
 /** POST /api/hwid/devices/delete-all — сбросить все устройства юзера */
 export function remnaDeleteAllUserDevices(userUuid: string) {
-  return remnaFetch("/api/hwid/devices/delete-all", { method: "POST", body: JSON.stringify({ userUuid }) });
+  return remnaFetch("/api/hwid/devices/delete-all", { method: "POST", body: JSON.stringify(hwidUserRef(userUuid)) });
 }
 
 /** сквады: доступные ноды + добавить/убрать юзеров */
