@@ -636,6 +636,12 @@ export async function remnaEncryptHappLink(linkToEncrypt: string): Promise<strin
   // Уже crypt — возвращаем как есть
   if (trimmed.startsWith("happ://")) return trimmed;
 
+  // В Remnawave 3.x ручки /api/system/tools/happ/encrypt больше нет —
+  // без этой проверки каждый вызов уходил бы в 404. Ссылка вернётся
+  // как есть (уже зашифровано либо шифрование недоступно).
+  const { getRemnaCapabilities } = await import("./remna-capabilities.js");
+  if (!(await getRemnaCapabilities()).happCrypt) return null;
+
   const cached = _happCryptCache.get(trimmed);
   if (cached && Date.now() - cached.ts < HAPP_CRYPT_TTL_MS) {
     return cached.value;
