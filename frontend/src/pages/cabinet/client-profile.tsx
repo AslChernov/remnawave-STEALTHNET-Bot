@@ -739,7 +739,7 @@ function ClassicProfilePage() {
                     <p className="font-bold text-lg truncate tracking-tight">{formatMoney(client.balance, client.preferredCurrency)}</p>
                   </div>
                 </div>
-                <Button variant="default" size="sm" className="bg-green-500 hover:bg-green-600 text-white shrink-0 shadow-lg shadow-green-500/20 px-5" onClick={() => {
+                <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-lg shadow-primary/20 px-5" onClick={() => {
                   const el = document.getElementById("topup");
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}>
@@ -971,7 +971,7 @@ function ClassicProfilePage() {
                                             <span className="text-[10px] sm:text-xs text-muted-foreground truncate block font-mono mt-0.5">{d.hwid.slice(0, 16)}…</span>
                                           </div>
                                         </div>
-                                        <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto rounded-xl h-9 px-3 sm:px-4 shadow-sm border-destructive/20 text-destructive bg-destructive/5 hover:bg-destructive hover:text-white hover:border-destructive dark:bg-destructive/10 transition-all" disabled={isDeleting} onClick={() => deleteDevice(d.hwid, d.subscriptionType, d.subscriptionId)}>
+                                        <Button variant="outline" size="sm" className="shrink-0 w-full sm:w-auto rounded-xl h-9 px-3 sm:px-4 shadow-sm border-red-500/25 bg-red-500/5 text-red-600 hover:border-red-500/45 hover:bg-red-500/10 hover:text-red-700 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/15 dark:hover:text-red-300 transition-all" disabled={isDeleting} onClick={() => deleteDevice(d.hwid, d.subscriptionType, d.subscriptionId)}>
                                           {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2 opacity-80" />}
                                           <span>{isDeleting ? t("cabinet.profile.devices_deleting") : t("cabinet.profile.device_disconnect")}</span>
                                         </Button>

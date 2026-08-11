@@ -615,26 +615,42 @@ export function remnaGetUserByUuid(uuid: string) {
 }
 
 /**
- * POST /api/system/tools/happ/encrypt — зашифровать ссылку через Happ Crypto.
+ * POST https://crypto.happ.su/api-v2.php — зашифровать ссылку через Happ Crypto.
  *
- * Использует встроенный механизм Remnawave (тот же, что обрабатывает плейсхолдер
- * `{{HAPP_CRYPT4_LINK}}` на встроенной sub-page Remnawave). Возвращает
- * зашифрованную ссылку вида `happ://crypt4/...` либо null, если запрос упал
- * (на старых Remna 1.x этого эндпоинта может не быть).
- *
- * Кэшируем результат в памяти на 10 минут — Remnawave при шифровании одной
- * и той же ссылки возвращает один и тот же crypt4-токен (он детерминирован
- * относительно секрета на стороне Remna), а наш клиент дёргает /subscription
- * на каждый рендер кабинета. Кэш экономит сетевой round-trip.
+ * Happ возвращает короткую ссылку вида `happ://crypt5/...`. При неудаче
+ * возвращаем null, а вызывающий код оставит исходный subscriptionUrl.
  */
+const HAPP_CRYPTO_API_URL = "https://crypto.happ.su/api-v2.php";
 const _happCryptCache = new Map<string, { value: string; ts: number }>();
 const HAPP_CRYPT_TTL_MS = 10 * 60 * 1000;
+const HAPP_CRYPT_TIMEOUT_MS = 10_000;
+
+function extractHappEncryptedLink(payload: unknown): string | null {
+  if (typeof payload === "string") {
+    const value = payload.trim();
+    return /^happ:\/\/crypt\d+\//i.test(value) ? value : null;
+  }
+  if (!payload || typeof payload !== "object") return null;
+  const obj = payload as Record<string, unknown>;
+  const candidates = [
+    obj.encrypted_link,
+    obj.encryptedLink,
+    obj.link,
+    obj.url,
+    obj.result,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const value = candidate.trim();
+    if (/^happ:\/\/crypt\d+\//i.test(value)) return value;
+  }
+  return null;
+}
 
 export async function remnaEncryptHappLink(linkToEncrypt: string): Promise<string | null> {
   const trimmed = linkToEncrypt.trim();
   if (!trimmed) return null;
-  // Уже crypt — возвращаем как есть
-  if (trimmed.startsWith("happ://")) return trimmed;
+  if (/^happ:\/\/crypt\d+\//i.test(trimmed)) return trimmed;
 
   // В Remnawave 3.x ручки /api/system/tools/happ/encrypt больше нет —
   // без этой проверки каждый вызов уходил бы в 404. Ссылка вернётся
@@ -647,20 +663,35 @@ export async function remnaEncryptHappLink(linkToEncrypt: string): Promise<strin
     return cached.value;
   }
 
-  const result = await remnaFetch<{ response?: { encryptedLink?: string } }>(
-    "/api/system/tools/happ/encrypt",
-    {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HAPP_CRYPT_TIMEOUT_MS);
+  try {
+    const response = await fetch(HAPP_CRYPTO_API_URL, {
       method: "POST",
-      body: JSON.stringify({ linkToEncrypt: trimmed }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: trimmed }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    if (!response.ok) return null;
+
+    let payload: unknown = raw.trim();
+    try {
+      payload = raw ? JSON.parse(raw) : null;
+    } catch {
+      // Happ normally returns JSON, but tolerate a raw happ://crypt link too.
     }
-  );
 
-  if (result.error || !result.data) return null;
-  const encrypted = result.data.response?.encryptedLink;
-  if (!encrypted || !encrypted.startsWith("happ://")) return null;
+    const encrypted = extractHappEncryptedLink(payload);
+    if (!encrypted) return null;
 
-  _happCryptCache.set(trimmed, { value: encrypted, ts: Date.now() });
-  return encrypted;
+    _happCryptCache.set(trimmed, { value: encrypted, ts: Date.now() });
+    return encrypted;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**

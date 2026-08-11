@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
@@ -78,6 +78,58 @@ function formatBytes(bytes: number) {
   if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1) + " ГБ";
   if (bytes >= 1024 ** 2) return (bytes / 1024 ** 2).toFixed(1) + " МБ";
   return (bytes / 1024).toFixed(0) + " КБ";
+}
+
+function isSafeInfoBlockUrl(url: string) {
+  const value = url.trim();
+  if (!value || /[\u0000-\u001f\s]/.test(value)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "tg:";
+  } catch {
+    return false;
+  }
+}
+
+function unescapeInfoBlockMarkdownText(text: string) {
+  return text.replace(/\\([\\[\]()])/g, "$1");
+}
+
+function renderInfoBlockMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const linkRe = /\[((?:\\.|[^\]\\]){1,128})\]\((https?:\/\/[^\s)]+|tg:\/\/[^\s)]+)\)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = linkRe.exec(text))) {
+    const before = text.slice(lastIndex, match.index);
+    if (before) nodes.push(before);
+
+    const label = unescapeInfoBlockMarkdownText(match[1] ?? "");
+    const url = (match[2] ?? "").trim();
+    if (!label.trim() || !isSafeInfoBlockUrl(url)) {
+      nodes.push(match[0]);
+    } else {
+      nodes.push(
+        <a
+          key={`info-link-${match.index}-${nodes.length}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
+        >
+          {label}
+        </a>
+      );
+    }
+    lastIndex = linkRe.lastIndex;
+  }
+  const rest = text.slice(lastIndex);
+  if (rest) nodes.push(rest);
+  return nodes;
+}
+
+function InfoBlockMarkdown({ text }: { text: string }) {
+  return <>{renderInfoBlockMarkdown(text.trim())}</>;
 }
 
 
@@ -587,7 +639,7 @@ function ClassicDashboardPage() {
       {/* T-expired-extend (WolfVPN, 2026-06-03): если главная подписка #0 истекла — даём продлить ИМЕННО её,
           а не только «Выбрать тариф». rootSubId есть всегда пока подписка #0 существует в БД (даже EXPIRED). */}
       {rootActionNode(
-        "gap-2 h-11 px-6 rounded-xl bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-white border-0 shadow-lg shadow-primary/30 hover:opacity-90 [&_svg]:self-center [&_span]:leading-none",
+        "gap-2 h-11 px-6 rounded-xl bg-primary text-primary-foreground border-0 shadow-lg shadow-primary/30 hover:bg-primary/90 [&_svg]:self-center [&_span]:leading-none",
         "h-4 w-4 shrink-0",
         "inline-flex items-center leading-none",
         "Продлить подписку #0",
@@ -685,7 +737,7 @@ function ClassicDashboardPage() {
           </DialogDescription>
           <Button
             onClick={() => setPaySuccessModal(null)}
-            className="mt-1 w-full h-12 rounded-xl text-base font-bold border-0 text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:opacity-90 [&_svg]:self-center [&_span]:leading-none"
+            className="mt-1 w-full h-12 rounded-xl text-base font-bold border-0 text-primary-foreground bg-primary hover:bg-primary/90 [&_svg]:self-center [&_span]:leading-none"
           >
             Отлично
           </Button>
@@ -720,7 +772,7 @@ function ClassicDashboardPage() {
 
         {config?.botInfoBlock?.trim() && (
           <div className="rounded-2xl border border-primary/30 bg-primary/5 backdrop-blur-md px-4 py-3 text-sm whitespace-pre-line shadow-sm">
-            {config.botInfoBlock.trim()}
+            <InfoBlockMarkdown text={config.botInfoBlock} />
           </div>
         )}
 
@@ -734,7 +786,7 @@ function ClassicDashboardPage() {
               <span className="truncate">{t("cabinet.dashboard.subscription_status")}</span>
             </span>
             {rootActionNode(
-              "shrink-0 gap-1.5 rounded-full h-8 px-3 bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-white border-0 shadow-md shadow-primary/30 hover:opacity-90 normal-case [&_svg]:self-center [&_span]:leading-none",
+              "shrink-0 gap-1.5 rounded-full h-8 px-3 bg-primary text-primary-foreground border-0 shadow-md shadow-primary/30 hover:bg-primary/90 normal-case [&_svg]:self-center [&_span]:leading-none",
               "h-3.5 w-3.5 shrink-0",
               "inline-flex items-center text-xs font-medium leading-none",
             )}
@@ -834,7 +886,7 @@ function ClassicDashboardPage() {
                     </Button>
                   </div>
                   <div className="pt-1">
-                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-white border-0" asChild>
+                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground hover:bg-primary/90 border-0" asChild>
                       {useRemnaPage && vpnUrl ? (
                         <a href={vpnUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
                           <Wifi className="h-5 w-5 shrink-0" />
@@ -872,7 +924,7 @@ function ClassicDashboardPage() {
                 </span>
                 {secActionNode(
                   sec,
-                  "shrink-0 gap-1.5 rounded-full h-8 px-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0 shadow-md shadow-indigo-500/30 hover:opacity-90 normal-case [&_svg]:self-center [&_span]:leading-none",
+                  "shrink-0 gap-1.5 rounded-full h-8 px-3 bg-primary text-primary-foreground border-0 shadow-md shadow-primary/30 hover:bg-primary/90 normal-case [&_svg]:self-center [&_span]:leading-none",
                   "h-3.5 w-3.5 shrink-0",
                   "inline-flex items-center text-xs font-medium leading-none",
                 )}
@@ -967,7 +1019,7 @@ function ClassicDashboardPage() {
                   </div>
                 )}
                 <div className="pt-2 flex flex-col sm:flex-row gap-2">
-                  <Button className="flex-1 gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-indigo-600 hover:bg-indigo-700 text-white" asChild>
+                  <Button className="flex-1 gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground hover:bg-primary/90" asChild>
                     {useRemnaPage && secParsed.subscriptionUrl ? (
                       <a href={secParsed.subscriptionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
                         <Wifi className="h-5 w-5 shrink-0" />
@@ -999,7 +1051,7 @@ function ClassicDashboardPage() {
           {vpnUrl ? (
             <div className="space-y-4">
               {showMultiTrials && (
-                <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg h-12 rounded-xl hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
+                <Button className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-12 rounded-xl hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
                   {trialLoading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Gift className="h-5 w-5 shrink-0" />}
                   <span className="inline-flex items-center leading-none font-medium text-base">{t("cabinet.dashboard.free_trial")}</span>
                 </Button>
@@ -1013,10 +1065,10 @@ function ClassicDashboardPage() {
               </div>
               <p className="text-[14px] text-muted-foreground">
                 {showMultiTrials
-                  ? "Возьми бесплатный пробник — попробуй VPN без оплаты"
+                  ? "Возьми бесплатный пробник — попробуй сервис без оплаты"
                   : `${t("cabinet.dashboard.free_trial_desc")} ${formatRuDays(trialDays)}.`}
               </p>
-              <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg h-12 rounded-xl hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
+              <Button className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-12 rounded-xl hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
                 {trialLoading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Gift className="h-5 w-5 shrink-0" />}
                 <span className="inline-flex items-center leading-none font-medium text-base">{t("cabinet.dashboard.free_trial")}</span>
               </Button>
@@ -1152,9 +1204,9 @@ function ClassicDashboardPage() {
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 min-w-[240px]">
             {/* T-trial-coexist (27.05.2026, WolfVPN): «Бесплатный Тест» (мульти-триал) и
                 «Подключиться» могут показываться ВМЕСТЕ. Legacy single-trial — только когда нет подписки. */}
-            {/* T-main-connect (WolfVPN): кнопка «Подключиться к VPN» убрана из hero — теперь она в карточке основной подписки (со ссылкой) */}
+            {/* T-main-connect (WolfVPN): кнопка «Подключиться» убрана из hero — теперь она в карточке основной подписки (со ссылкой) */}
             {showAnyTrial && (
-              <Button size="lg" className="w-full gap-2 shadow-xl bg-green-600 hover:bg-green-700 text-white rounded-xl h-14 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
+              <Button size="lg" className="w-full gap-2 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-14 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none" onClick={activateTrial} disabled={trialLoading}>
                 {trialLoading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Gift className="h-5 w-5 shrink-0" />}
                 <span className="inline-flex items-center text-base font-medium leading-none">{t("cabinet.dashboard.free_trial")}</span>
               </Button>
@@ -1179,7 +1231,7 @@ function ClassicDashboardPage() {
 
       {config?.botInfoBlock?.trim() && (
         <div className="rounded-2xl border border-primary/30 bg-primary/5 backdrop-blur-md px-5 py-4 text-sm whitespace-pre-line shadow-sm">
-          {config.botInfoBlock.trim()}
+          <InfoBlockMarkdown text={config.botInfoBlock} />
         </div>
       )}
 
@@ -1196,7 +1248,7 @@ function ClassicDashboardPage() {
                 <span className="truncate">{t("cabinet.dashboard.my_subscription")}</span>
               </div>
               {rootActionNode(
-                "shrink-0 gap-1.5 rounded-full h-9 px-4 bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-white border-0 shadow-md shadow-primary/30 hover:opacity-90 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none",
+                "shrink-0 gap-1.5 rounded-full h-9 px-4 bg-primary text-primary-foreground border-0 shadow-md shadow-primary/30 hover:bg-primary/90 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none",
                 "h-4 w-4 shrink-0",
                 "inline-flex items-center text-sm font-medium leading-none",
               )}
@@ -1292,7 +1344,7 @@ function ClassicDashboardPage() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform [&_svg]:self-center [&_span]:leading-none bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-white border-0" asChild>
+                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground hover:bg-primary/90 border-0" asChild>
                       {useRemnaPage && vpnUrl ? (
                         <a href={vpnUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
                           <Wifi className="h-5 w-5 shrink-0" />
@@ -1380,7 +1432,7 @@ function ClassicDashboardPage() {
               <p className="text-[11px] font-medium text-red-500 dark:text-red-400 -mt-2">{autoRenewPromoError}</p>
             )}
 
-            <Button variant="default" size="lg" className="relative w-full gap-2 h-14 rounded-2xl text-[16px] font-semibold bg-gradient-to-r from-primary via-primary to-violet-500 text-primary-foreground border-0 shadow-[0_8px_30px_-8px] shadow-primary/50 hover:shadow-[0_10px_40px_-8px] hover:shadow-primary/60 hover:scale-[1.03] active:scale-[0.99] transition-all duration-300 [&_svg]:self-center [&_span]:leading-none" asChild>
+            <Button variant="default" size="lg" className="relative w-full gap-2 h-14 rounded-2xl text-[16px] font-semibold bg-primary text-primary-foreground border-0 shadow-[0_8px_30px_-8px] shadow-primary/50 hover:bg-primary/90 hover:shadow-[0_10px_40px_-8px] hover:shadow-primary/60 hover:scale-[1.03] active:scale-[0.99] transition-all duration-300 [&_svg]:self-center [&_span]:leading-none" asChild>
               <Link to="/cabinet/profile#topup" className="inline-flex items-center justify-center gap-2 leading-none">
                 <PlusCircle className="h-5 w-5 shrink-0" />
                 <span className="inline-flex items-center leading-none">{t("cabinet.dashboard.top_up")}</span>
@@ -1463,7 +1515,7 @@ function ClassicDashboardPage() {
                   )}
                 </div>
                 <div className="pt-1">
-                  <Button variant="outline" className="group/btn w-full rounded-2xl h-12 text-[15px] font-medium bg-background/30 hover:bg-gradient-to-r hover:from-primary/10 hover:to-violet-500/10 hover:border-primary/30 transition-all duration-300 border-border/50 [&_svg]:self-center [&_span]:leading-none" asChild>
+                  <Button variant="outline" className="group/btn w-full rounded-2xl h-12 text-[15px] font-medium bg-background/30 hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 border-border/50 [&_svg]:self-center [&_span]:leading-none" asChild>
                      <Link to="/cabinet/referral" className="inline-flex items-center justify-center gap-2 leading-none">
                        <span className="inline-flex items-center leading-none">Подробная статистика</span>
                        <ArrowRight className="h-4 w-4 shrink-0 group-hover/btn:translate-x-1 transition-transform duration-300" />
@@ -1481,7 +1533,7 @@ function ClassicDashboardPage() {
                 <Button variant="default" size="lg" className="w-full gap-2 rounded-xl shadow-lg h-14 text-[16px] hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none" asChild>
                   <Link to="/cabinet/subscribe" className="inline-flex items-center justify-center gap-2 leading-none">
                     <Wifi className="h-5 w-5 shrink-0" />
-                    <span className="inline-flex items-center leading-none">Подключить VPN</span>
+                    <span className="inline-flex items-center leading-none">Подключиться</span>
                   </Link>
                 </Button>
               </div>
@@ -1545,7 +1597,7 @@ function ClassicDashboardPage() {
                         )}
                         {secActionNode(
                           sec,
-                          "shrink-0 gap-1.5 rounded-full h-9 px-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0 shadow-md shadow-indigo-500/30 hover:opacity-90 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none",
+                          "shrink-0 gap-1.5 rounded-full h-9 px-4 bg-primary text-primary-foreground border-0 shadow-md shadow-primary/30 hover:bg-primary/90 hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none",
                           "h-4 w-4 shrink-0",
                           "inline-flex items-center text-sm font-medium leading-none",
                         )}
@@ -1631,7 +1683,7 @@ function ClassicDashboardPage() {
                         </div>
                       )}
                       <div className="pt-2 flex flex-col gap-2">
-                        <Button variant="default" size="lg" className="w-full gap-2 rounded-xl shadow-lg h-14 text-[16px] hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none bg-indigo-600 hover:bg-indigo-700 text-white" asChild>
+                        <Button variant="default" size="lg" className="w-full gap-2 rounded-xl shadow-lg h-14 text-[16px] hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground hover:bg-primary/90" asChild>
                           {useRemnaPage && secParsed.subscriptionUrl ? (
                             <a href={secParsed.subscriptionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 leading-none">
                               <Wifi className="h-5 w-5 shrink-0" />

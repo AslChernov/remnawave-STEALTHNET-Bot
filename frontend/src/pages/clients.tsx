@@ -127,7 +127,7 @@ export function ClientsPage() {
   // Массовые операции напрямую в Remnawave (API 2.8 /users/bulk/*): маппим выбранных клиентов  remnawaveUuid.
   const runRemnaBulk = async (action: "reset-traffic" | "revoke") => {
     const uuids = (data?.items ?? []).filter((c) => selectedIds.has(c.id) && c.remnawaveUuid).map((c) => c.remnawaveUuid as string);
-    if (uuids.length === 0) { setBulkError("У выбранных клиентов нет VPN-подписки (remnawaveUuid)."); setBulkResult(null); return; }
+    if (uuids.length === 0) { setBulkError("У выбранных клиентов нет подписки Remna (remnawaveUuid)."); setBulkResult(null); return; }
     const label = action === "reset-traffic" ? "Сбросить трафик" : "Перевыпустить подписку (revoke)";
     if (!confirm(`${label} у ${uuids.length} клиент(ов) в Remnawave?`)) return;
     setRemnaBulkBusy(action); setBulkError(null); setBulkResult(null);
@@ -1838,7 +1838,7 @@ function ClientBulkActionsPanel({
               disabled={busy != null}
               onClick={() => run("disable", t("admin.clients.bulk_disable_client", "Отключение клиента"),
                 () => api.clientBulkDisable(token, client.id),
-                { confirm: t("admin.clients.bulk_disable_confirm", "Отключить клиента?\nЭто заблокирует его в боте, отключит VPN на ВСЕХ его подписках, и снимет авто-продление.") })}
+                { confirm: t("admin.clients.bulk_disable_confirm", "Отключить клиента?\nЭто заблокирует его в боте, отключит доступ на ВСЕХ его подписках, и снимет авто-продление.") })}
             >
               {busy === "disable" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
               {t("admin.clients.bulk_disable_client_btn", "Отключить клиента")}
@@ -2111,7 +2111,7 @@ function ClientServicesTab({ clientId, token }: { clientId: string; token: strin
               onChange={(e) => setGrantSubId(e.target.value)}
               className="w-full h-10 rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              {linkedSubs.length === 0 && <option value="">Нет подписок с VPN</option>}
+              {linkedSubs.length === 0 && <option value="">Нет подписок с подключением</option>}
               {linkedSubs.map((s) => (
                 <option key={s.subscriptionId} value={s.subscriptionId}>
                   {s.subscriptionIndex === 0 ? "Главная" : `#${s.subscriptionIndex}`}{s.tariffName ? ` — ${s.tariffName}` : ""}
@@ -2154,7 +2154,7 @@ function ClientServicesTab({ clientId, token }: { clientId: string; token: strin
                   {s.subscriptionIndex === 0 ? "Главная" : `#${s.subscriptionIndex}`}
                 </span>
                 {s.tariffName && <span className="text-muted-foreground">{s.tariffName}</span>}
-                {!s.linked && <span className="ml-auto text-[10px] text-amber-500">не привязана к VPN</span>}
+                {!s.linked && <span className="ml-auto text-[10px] text-amber-500">не привязана к Remna</span>}
               </div>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="text-sm">

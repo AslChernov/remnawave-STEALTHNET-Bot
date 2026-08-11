@@ -31,7 +31,7 @@ const BUTTON_ACTIONS = [
   { value: "menu:referral", label: " Реферальная программа" },
   { value: "menu:promocode", label: " Промокод" },
   { value: "menu:support", label: " Поддержка" },
-  { value: "menu:vpn", label: " VPN подключение" },
+  { value: "menu:vpn", label: " Подключение" },
   { value: "menu:devices", label: " Устройства" },
   { value: "menu:extra_options", label: " Доп. опции" },
   { value: "menu:main", label: " Главное меню" },

@@ -85,11 +85,9 @@ export function AdminEmailTemplatesPage() {
     setBusy("preview");
     setErr(null);
     try {
-      // используем текущие subject/body, а не сохранённые — для live-preview сначала сохраняем, потом превьюим
-      // Здесь делаем offline-preview: сами подставляем vars
-      const render = (tpl: string) => tpl.replace(/\{\{(\w+)\}\}/g, (_m, name) => vars[name] ?? `{{${name}}}`);
-      setPreviewSubject(render(subject));
-      setPreviewBody(render(body));
+      const rendered = await emailTemplatesApi.preview(state.accessToken, active.key, vars, subject, body);
+      setPreviewSubject(rendered.subject);
+      setPreviewBody(rendered.body);
       setShowPreview(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "preview error");

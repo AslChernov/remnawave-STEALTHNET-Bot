@@ -126,7 +126,7 @@ export async function applyExtraOptionByPaymentId(paymentId: string): Promise<Ap
     }
   }
   if (!targetSub.remnawaveUuid) {
-    return { ok: false, error: "Подписка не привязана к VPN", status: 400 };
+    return { ok: false, error: "Подписка не привязана к Remna", status: 400 };
   }
   const uuid = targetSub.remnawaveUuid;
   // Для совместимости с существующей логикой bumpCustomPrice/extraDevices ниже —

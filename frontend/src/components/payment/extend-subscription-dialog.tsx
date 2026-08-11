@@ -360,7 +360,7 @@ export function ExtendSubscriptionDialog({
                   size="lg"
                   disabled={payLoading || !hasBalance}
                   onClick={() => payWith("balance")}
-                  className="w-full h-14 justify-between rounded-xl bg-primary border-0 px-5"
+                  className="w-full h-14 justify-between rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 border-0 shadow-lg px-5"
                 >
                   <span className="flex items-center gap-2.5 font-bold">
                     {payLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5" />}

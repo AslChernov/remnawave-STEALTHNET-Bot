@@ -107,7 +107,7 @@ export async function createNalogReceipt(params: {
     const result = await nalogCreateIncome(token, {
       paymentType: "ACCOUNT",
       services: [{
-        name: serviceName.slice(0, 200) || "Оплата VPN-подписки",
+        name: serviceName.slice(0, 200) || "Оплата подписки",
         amount: params.amount,
         quantity: 1,
       }],

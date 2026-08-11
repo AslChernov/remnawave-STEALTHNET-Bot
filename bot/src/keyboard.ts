@@ -15,9 +15,11 @@ interface InlineButton {
 
 type WebAppButton = { text: string; web_app: { url: string }; icon_custom_emoji_id?: string; style?: ButtonStyle };
 type UrlButton = { text: string; url: string; icon_custom_emoji_id?: string; style?: ButtonStyle };
-export type InlineMarkup = { inline_keyboard: (InlineButton | WebAppButton | UrlButton)[][] };
+type CopyTextButton = { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string; style?: ButtonStyle };
+export type InlineMarkup = { inline_keyboard: (InlineButton | WebAppButton | UrlButton | CopyTextButton)[][] };
 
 export type BotButtonConfig = { id: string; visible: boolean; label: string; order: number; style?: string; iconCustomEmojiId?: string; onePerRow?: boolean };
+type BotEmojiMap = Record<string, { unicode?: string | null; tgEmojiId?: string | null }>;
 
 // ─── кастомные названия платёжных провайдеров ────────
 // Админ настраивает в /admin/settings → «Порядок и названия платёжных методов».
@@ -92,6 +94,19 @@ function btn(text: string, data: string, style?: ButtonStyle | null, iconCustomE
   return b;
 }
 
+function labelWithEmojiKey(
+  botEmojis: BotEmojiMap | null | undefined,
+  key: string,
+  fallbackUnicode: string,
+  label: string,
+): { text: string; iconCustomEmojiId?: string } {
+  const entry = botEmojis?.[key];
+  const iconCustomEmojiId = entry?.tgEmojiId?.trim() || undefined;
+  if (iconCustomEmojiId) return { text: stripLeadingEmoji(label), iconCustomEmojiId };
+  const unicode = entry?.unicode?.trim() || fallbackUnicode;
+  return { text: `${unicode} ${stripLeadingEmoji(label)}`.trim() };
+}
+
 function resolveStyle(configured: ButtonStyle | undefined | null, fallback: ButtonStyle): ButtonStyle | undefined {
   if (configured === null) return fallback;
   return configured;
@@ -133,7 +148,7 @@ const DEFAULT_BUTTONS: BotButtonConfig[] = [
   // T11 (11.05.2026): эмодзи ↔️ → 👥 по эталону скрина 1.
   { id: "referral", visible: true, label: "👥 Реферальная программа", order: 3, style: "primary" },
   { id: "trial", visible: true, label: "🎁 Бесплатный Тест", order: 4, style: "success" },
-  { id: "vpn", visible: true, label: "🌐 Подключиться к VPN", order: 5, style: "danger", onePerRow: true },
+  { id: "vpn", visible: true, label: "🌐 Подключиться", order: 5, style: "danger", onePerRow: true },
   { id: "cabinet", visible: true, label: "🌐 Web Кабинет", order: 6, style: "primary" },
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary" },
   // T11 (11.05.2026): «🆘 Поддержка» → «⭕ Помощь» по эталону скрина 1.
@@ -257,11 +272,14 @@ export function mainMenu(opts: {
         items.push({ node: u, onePerRow });
       }
     } else if (b.id === "vpn") {
-      // кнопка «🔌 Подключиться» теперь ВСЕГДА callback `menu:vpn`,
-      // а не прямой URL/WebApp. Внутри handler решает: 1 подписка → выдача ссылки,
-      // 2+ подписок → picker. Раньше была URL/WebApp напрямую → handler не отрабатывал →
-      // у юзеров с несколькими подписками не было выбора.
-      items.push({ node: btn(b.label, MENU_IDS[b.id], styleForBtn, iconId), onePerRow });
+      if (base) {
+        const w: WebAppButton = { text: labelForIcon, web_app: { url: `${base}/cabinet/subscribe` } };
+        if (iconId) w.icon_custom_emoji_id = iconId;
+        if (styleForBtn) w.style = styleForBtn;
+        items.push({ node: w, onePerRow });
+      } else {
+        items.push({ node: btn(b.label, MENU_IDS[b.id], styleForBtn, iconId), onePerRow });
+      }
     } else if (b.id === "tickets" && base) {
       const w: WebAppButton = { text: labelForIcon, web_app: { url: `${base}/cabinet/tickets` } };
       if (iconId) w.icon_custom_emoji_id = iconId;
@@ -308,13 +326,20 @@ export function helpMainMenu(
   backStyle?: string,
   emojiIds?: InnerEmojiIds,
   lang = "ru",
+  botEmojis?: BotEmojiMap | null,
 ): InlineMarkup {
   const back = (backLabel && backLabel.trim()) || _t("back_to_menu", lang);
   const backSty = resolveStyle(toStyle(backStyle), "danger");
   const rows: (InlineButton | UrlButton)[][] = [];
   const support = (links.support ?? "").trim();
-  if (support) rows.push([{ text: "🧑‍💼 Написать в поддержку", url: support }]);
-  rows.push([btn("📄 Документы", "menu:docs", undefined, undefined)]);
+  if (support) {
+    const supportLabel = labelWithEmojiKey(botEmojis, "SUPPORT", "🧑‍💼", "Написать в поддержку");
+    const supportButton: UrlButton = { text: supportLabel.text, url: support };
+    if (supportLabel.iconCustomEmojiId) supportButton.icon_custom_emoji_id = supportLabel.iconCustomEmojiId;
+    rows.push([supportButton]);
+  }
+  const documentsLabel = labelWithEmojiKey(botEmojis, "DOCUMENTS", "📄", "Документы");
+  rows.push([btn(documentsLabel.text, "menu:docs", undefined, documentsLabel.iconCustomEmojiId)]);
   rows.push([btn(back, "menu:main", backSty, emojiIds?.back)]);
   return { inline_keyboard: rows };
 }

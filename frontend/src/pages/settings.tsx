@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
-import { useRemnaCapabilities } from "@/lib/use-remna-capabilities";
 import { api, type AdminSettings, type AutoRenewStats, type SyncResult, type SyncToRemnaResult, type SyncCreateRemnaForMissingResult, type SubscriptionPageConfig, type SshConfig } from "@/lib/api";
 import { SubscriptionPageEditor } from "@/components/subscription-page-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +68,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonItem[] = [
   { id: "topup", visible: true, label: " Пополнить баланс", order: 2, style: "success", emojiKey: "CARD" },
   { id: "referral", visible: true, label: " Реферальная программа", order: 3, style: "primary", emojiKey: "LINK" },
   { id: "trial", visible: true, label: " Попробовать бесплатно", order: 4, style: "success", emojiKey: "TRIAL" },
-  { id: "vpn", visible: true, label: " Подключиться к VPN", order: 5, style: "danger", emojiKey: "SERVERS", onePerRow: true },
+  { id: "vpn", visible: true, label: " Подключиться", order: 5, style: "danger", emojiKey: "SERVERS", onePerRow: true },
   { id: "cabinet", visible: true, label: " Web Кабинет", order: 6, style: "primary", emojiKey: "SERVERS" },
   { id: "tickets", visible: true, label: " Тикеты", order: 6.5, style: "primary", emojiKey: "NOTE" },
   { id: "support", visible: true, label: " Поддержка", order: 7, style: "primary", emojiKey: "NOTE" },
@@ -82,7 +81,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonItem[] = [
   { id: "site", visible: true, label: " Сайт", order: 10, style: "", onePerRow: true },
 ];
 
-const BOT_EMOJI_KEYS = ["HEADER", "MAIN_MENU", "STATUS", "BALANCE", "TARIFFS", "PACKAGE", "PROFILE", "CARD", "TRIAL", "LINK", "SERVERS", "BACK", "BACK_TO_SUB", "BACK_TO_SUBS_LIST", "PUZZLE", "DATE", "TIME", "TRAFFIC", "ACTIVE_GREEN", "ACTIVE_YELLOW", "INACTIVE", "CONNECT", "NOTE", "STAR", "CROWN", "DURATION", "DEVICES", "LOCATION", "CUSTOM_1", "CUSTOM_2", "CUSTOM_3", "CUSTOM_4", "CUSTOM_5"] as const;
+const BOT_EMOJI_KEYS = ["HEADER", "MAIN_MENU", "STATUS", "BALANCE", "TARIFFS", "PACKAGE", "PROFILE", "CARD", "TRIAL", "LINK", "SERVERS", "SUPPORT", "DOCUMENTS", "TG_ID", "USERNAME", "SUBS_COUNT", "REF_EARNED", "REF_WITHDRAWN", "REF_SPENT", "REF_AVAILABLE", "REF_COPY_SITE", "REF_COPY_BOT", "REF_SHARE", "BACK", "BACK_TO_SUB", "BACK_TO_SUBS_LIST", "PUZZLE", "DATE", "TIME", "TRAFFIC", "ACTIVE_GREEN", "ACTIVE_YELLOW", "INACTIVE", "CONNECT", "NOTE", "STAR", "CROWN", "DURATION", "DEVICES", "LOCATION", "CUSTOM_1", "CUSTOM_2", "CUSTOM_3", "CUSTOM_4", "CUSTOM_5"] as const;
 
 const DEFAULT_BOT_MENU_TEXTS: Record<string, string> = {
   welcomeTitlePrefix: " ",
@@ -200,7 +199,19 @@ const BOT_EMOJI_LABELS: Record<string, string> = {
   CARD: "Оплата / Карта",
   TRIAL: "Триал / Подарок",
   LINK: "Ссылка / Реферал",
-  SERVERS: "VPN / Серверы",
+  SERVERS: "Подключение / Серверы",
+  SUPPORT: "Кнопка «Написать в поддержку»",
+  DOCUMENTS: "Раздел «Документы»",
+  TG_ID: "Строка Telegram ID",
+  USERNAME: "Строка Username",
+  SUBS_COUNT: "Строка активных подписок",
+  REF_EARNED: "Рефералка: заработок всего",
+  REF_WITHDRAWN: "Рефералка: выведено",
+  REF_SPENT: "Рефералка: потрачено",
+  REF_AVAILABLE: "Рефералка: доступно",
+  REF_COPY_SITE: "Рефералка: копировать сайт",
+  REF_COPY_BOT: "Рефералка: копировать бота",
+  REF_SHARE: "Рефералка: поделиться",
   BACK: "Кнопка «Назад»",
   BACK_TO_SUB: "Кнопка «К подписке»",
   BACK_TO_SUBS_LIST: "Кнопка «К списку подписок»",
@@ -235,7 +246,7 @@ const BOT_STYLE_OPTIONS: { value: string; label: string; swatch: string }[] = [
 
 /** Человеко-читаемые имена кнопок главного меню по их id (для подсказок справа от ввода). */
 const BOT_BUTTON_HUMAN_NAMES: Record<string, string> = {
-  tariffs: "Список тарифов VPN",
+  tariffs: "Список тарифов",
   proxy: "Прокси-тарифы",
   my_proxy: "Мои прокси-доступы",
   singbox: "Singbox-доступы",
@@ -245,7 +256,7 @@ const BOT_BUTTON_HUMAN_NAMES: Record<string, string> = {
   topup: "Пополнение баланса",
   referral: "Реферальная программа",
   trial: "Бесплатный триал",
-  vpn: "Подключение к VPN",
+  vpn: "Подключение",
   cabinet: "Открыть веб-кабинет",
   tickets: "Тикеты поддержки",
   support: "Связь с поддержкой",
@@ -424,8 +435,6 @@ export function SettingsPage() {
   const [landingDevicesList, setLandingDevicesList] = useState<string[]>(defaultDevicesList);
   const [landingQuickStartList, setLandingQuickStartList] = useState<string[]>(defaultQuickStartList);
   const token = state.accessToken!;
-  // На Remnawave 3.x ручки happ-шифрования нет — тумблер обещал бы несбыточное.
-  const remnaCaps = useRemnaCapabilities();
 
   useEffect(() => {
     let cancelled = false;
@@ -796,8 +805,8 @@ export function SettingsPage() {
         emailDomainBlocklist: settings.emailDomainBlocklist ?? "",
         emailPatternBlocklist: settings.emailPatternBlocklist ?? "",
         signupMaxPerIpPerHour: settings.signupMaxPerIpPerHour ?? 3,
-        // Happ Crypto Link (шифрование подписочных URL в happ://crypt4/...)
-        happCryptEnabled: settings.happCryptEnabled === true,
+        // Happ Crypto Link (шифрование подписочных URL в happ://crypt5/...)
+        happCryptEnabled: settings.happCryptEnabled !== false,
         defaultAutoRenewEnabled: settings.defaultAutoRenewEnabled ?? false,
         autoRenewDaysBeforeExpiry: settings.autoRenewDaysBeforeExpiry ?? 1,
         autoRenewNotifyDaysBefore: settings.autoRenewNotifyDaysBefore ?? 3,
@@ -1968,7 +1977,7 @@ export function SettingsPage() {
                             className="w-full min-h-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm"
                             value={settings.botWelcomeText ?? ""}
                             onChange={(e) => setSettings((s) => (s ? { ...s, botWelcomeText: e.target.value || null } : s))}
-                            placeholder={"Добро пожаловать в VPN!\n\n Высокая скорость\n Удаляем рекламу\n Огромный запас трафика\n Платим 30% с платежей друзей"}
+                            placeholder={"Добро пожаловать!\n\n🚀 Высокая скорость\n🚫 Удаляем рекламу\n♾ Огромный запас трафика\n👥 Платим 30% с платежей друзей"}
                             maxLength={4000}
                           />
                           <p className="text-[10px] text-muted-foreground">До 4000 символов. Эмодзи поддерживаются. Если задана картинка — текст идёт как caption (макс. 1024 символа в Telegram).</p>
@@ -2172,6 +2181,7 @@ export function SettingsPage() {
                       <p className="text-xs text-muted-foreground">
                         Произвольный текст, который показывается в главном меню бота и в кабинете клиента.
                         Используй для объявлений тех. работ, акций, контактов поддержки. Скрывается если поле пустое.
+                        Поддерживаются ссылки в формате [текст](https://example.com) или [бот](tg://resolve?domain=username).
                       </p>
                       <Textarea
                         value={settings.botInfoBlock ?? ""}
@@ -2347,7 +2357,7 @@ export function SettingsPage() {
                             <FileText className="h-4 w-4 text-purple-500" />
                             <Label className="text-sm font-medium">Инструкции по подключению</Label>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mb-2">Инструкции для клиентов как подключить VPN на разных устройствах.</p>
+                          <p className="text-[11px] text-muted-foreground mb-2">Инструкции для клиентов по подключению на разных устройствах.</p>
                           <Input
                             value={settings.instructionsLink ?? ""}
                             onChange={(e) => setSettings((s) => (s ? { ...s, instructionsLink: e.target.value } : s))}
@@ -3906,7 +3916,7 @@ export function SettingsPage() {
                     className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={settings.aiSystemPrompt ?? ""}
                     onChange={(e) => setSettings((s) => (s ? { ...s, aiSystemPrompt: e.target.value } : s))}
-                    placeholder="Ты — лучший менеджер техподдержки VPN-сервиса..."
+                    placeholder="Ты — лучший менеджер техподдержки сервиса доступа..."
                   />
                   <p className="text-xs text-muted-foreground">
                     {t("admin.settings.ai_prompt_hint")}
@@ -3945,23 +3955,21 @@ export function SettingsPage() {
                     <h3 className="text-base font-semibold">Happ Crypto Link</h3>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Шифрует ссылки подписки в формат <code className="text-xs">happ://crypt4/...</code> через
-                    встроенный API Remnawave. <b>Скрывает оригинальный URL подписки</b> от пользователя.
-                    Минус: зашифрованная ссылка длиннее (~1500 символов) — в Telegram-сообщениях выглядит
-                    как простыня. Рекомендуется только если у вас публичная панель и важно скрыть домен подписки.
+                    Шифрует ссылки подписки в формат <code className="text-xs">happ://crypt5/...</code> через
+                    прямой API Happ. <b>Скрывает оригинальный URL подписки</b> от пользователя и делает ссылку
+                    безопасной для кнопок подключения в кабинете и боте.
                   </p>
                   <label className="flex items-center gap-3 p-3.5 rounded-xl bg-card/40 border border-border cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.happCryptEnabled === true && remnaCaps.happCrypt}
-                      disabled={!remnaCaps.happCrypt}
+                      checked={settings.happCryptEnabled !== false}
                       onChange={(e) => setSettings((s) => (s ? { ...s, happCryptEnabled: e.target.checked } : s))}
                       className="rounded border w-4 h-4"
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium">Шифровать ссылки подписки (Happ Crypto)</span>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Выкл по умолчанию. После изменения нажмите «Сохранить» и подождите 60 сек (кэш бэкенда).
+                        Вкл по умолчанию. После изменения нажмите «Сохранить» и подождите 60 сек (кэш бэкенда).
                       </p>
                     </div>
                   </label>
@@ -5107,7 +5115,7 @@ export function SettingsPage() {
                 <Label htmlFor="nalog-service-name">{t("admin.settings.nalog_service_name")}</Label>
                 <Input
                   id="nalog-service-name"
-                  placeholder="Оплата VPN-подписки"
+                  placeholder="Оплата подписки"
                   value={settings.nalogServiceName ?? ""}
                   onChange={(e) => setSettings({ ...settings, nalogServiceName: e.target.value || null })}
                   disabled={!settings.nalogEnabled}
@@ -5270,7 +5278,7 @@ export function SettingsPage() {
                     Мульти-подписки
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Вкл: у клиента может быть несколько подписок одновременно. Выкл (по умолчанию): одна подписка — при покупке другого тарифа старая заменяется новой (остаток дней сгорает, VPN-ссылка сохраняется), клиенту показывается предупреждение.
+                    Вкл: у клиента может быть несколько подписок одновременно. Выкл (по умолчанию): одна подписка — при покупке другого тарифа старая заменяется новой (остаток дней сгорает, ссылка подключения сохраняется), клиенту показывается предупреждение.
                   </p>
                 </div>
               </div>

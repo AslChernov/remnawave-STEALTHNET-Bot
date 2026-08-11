@@ -470,9 +470,9 @@ function TitleAndThemeSync() {
     if (!config) return;
     const base = config.serviceName ?? "";
     let suffix = "";
-    if (location.pathname.startsWith("/admin")) suffix = " — Admin";
-    else if (location.pathname.startsWith("/cabinet")) suffix = " — Кабинет";
-    document.title = (base + suffix).trim() || suffix.replace(/^ — /, "").trim();
+    if (location.pathname.startsWith("/admin")) suffix = " Admin";
+    else if (location.pathname.startsWith("/cabinet")) suffix = " Личный Кабинет";
+    document.title = (base + suffix).trim() || suffix.trim();
 
     // Custom favicon: убираем все статические <link rel="icon"> из index.html
     // (svg, 32px, 16px, apple-touch и иконки PWA-манифеста), потому что

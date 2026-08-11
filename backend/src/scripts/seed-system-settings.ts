@@ -8,7 +8,7 @@ const DEFAULTS: Array<[string, string]> = [
   ["active_currencies", "usd,rub"],
   ["default_referral_percent", "10"],
   ["trial_days", "3"],
-  ["service_name", "STEALTHNET"],
+  ["service_name", "ALTETH"],
   [
     "bot_inner_button_styles",
     '{"tariffPay":"success","topup":"primary","back":"danger","profile":"primary","trialConfirm":"success","lang":"primary","currency":"primary"}',
@@ -69,7 +69,7 @@ const DEFAULTS: Array<[string, string]> = [
   // T11 (11.05.2026): приглашение на экране «🎁 Подарить подписку» (скрин 11).
   [
     "gift_intro_text",
-    "🤔 Устали смотреть, как мучается Ваш близкий человек?\n\nПодарите ему доступ к нашему VPN 💖\n\n🎁 После оплаты придёт доступ, который вам останется лишь переслать человеку, которому вы хотите его подарить! 🤗",
+    "🤔 Устали смотреть, как мучается Ваш близкий человек?\n\nПодарите ему доступ к нашему сервису 💖\n\n🎁 После оплаты придёт доступ, который вам останется лишь переслать человеку, которому вы хотите его подарить! 🤗",
   ],
 ];
 
@@ -92,7 +92,7 @@ const MARKETPLACE_CATEGORIES: Array<{
   icon: string;
   sortOrder: number;
 }> = [
-  { slug: "vpn-servers",     labelRu: "VPN-серверы",          labelEn: "VPN servers",         icon: "Server",      sortOrder: 10 },
+  { slug: "vpn-servers",     labelRu: "Серверы доступа",      labelEn: "Access servers",      icon: "Server",      sortOrder: 10 },
   { slug: "ipv4-proxy",      labelRu: "IPv4 / IPv6 прокси",   labelEn: "IPv4 / IPv6 proxies", icon: "Globe",       sortOrder: 20 },
   { slug: "residential",     labelRu: "Резидентские прокси",  labelEn: "Residential proxies", icon: "Network",     sortOrder: 30 },
   { slug: "ready-panels",    labelRu: "Готовые панели",       labelEn: "Turn-key panels",     icon: "LayoutGrid",  sortOrder: 40 },

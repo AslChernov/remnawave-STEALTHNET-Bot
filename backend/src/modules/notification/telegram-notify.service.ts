@@ -8,6 +8,11 @@ import { getSystemConfig } from "../client/client.service.js";
 import { proxyFetch } from "../proxy-util/proxy-fetch.js";
 import { getProxyUrl } from "../proxy-util/get-proxy-url.js";
 
+type ButtonStyle = "primary" | "success" | "danger";
+type NotifyInlineButton =
+  | { text: string; callback_data: string; style?: ButtonStyle }
+  | { text: string; web_app: { url: string }; style?: ButtonStyle };
+
 /** Inline keyboard with a single "Back to menu" button for client notifications. */
 function backToMenuMarkup(backLabel?: string | null): Record<string, unknown> {
   return { inline_keyboard: [[{ text: backLabel || "◀️ В меню", callback_data: "menu:main" }]] };
@@ -318,51 +323,26 @@ export async function notifyTariffActivated(clientId: string, paymentId: string)
     // Для подарочной не шлём «Тариф оплачен и активирован» — клиент получил красивый gift-текст выше.
     // Админ-уведомление шлётся в конце функции в любом случае.
   } else if (client.telegramId) {
-    // после успешной оплаты — выдаём ту же UX что после триала:
-    // ссылка подписки + кнопки «📲 Инструкции по установке» и «🌐 Локации» (если есть).
-    let subscriptionUrl: string | null = null;
+    const textClient = isAdminGrant
+      ? `✅ Администратор выдал Вам подписку Тариф «${escapeHtml(tariffName)}».${adminNote ? `\n\n💬 <i>${escapeHtml(adminNote)}</i>` : ""}`
+      : `✅ Тариф «${escapeHtml(tariffName)}» оплачен и активирован.`;
+    const cfg = await getSystemConfig();
+    let remnawaveUuid: string | null = null;
     if (payment?.subscriptionId) {
       const sub = await prisma.subscription.findUnique({
         where: { id: payment.subscriptionId },
         select: { remnawaveUuid: true },
       });
-      if (sub?.remnawaveUuid) {
-        try {
-          const { remnaGetUser } = await import("../remna/remna.client.js");
-          const r = await remnaGetUser(sub.remnawaveUuid);
-          const inner = (r.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.response
-            ?? (r.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.data
-            ?? (r.data as Record<string, unknown> | null);
-          subscriptionUrl = (inner as { subscriptionUrl?: string } | null)?.subscriptionUrl ?? null;
-        } catch { /* ignore */ }
-      }
+      remnawaveUuid = sub?.remnawaveUuid ?? null;
     }
-    const cfg = await getSystemConfig();
-    // подсказка «если инструкция не открылась»
-    // (платная/админская подписка). Текст из настроек (Тексты бота) или дефолт.
-    const instrFallback = ((cfg as { botInstructionFallbackText?: string | null }).botInstructionFallbackText ?? "").trim()
-      || "💡 Если инструкции не открываются: скопируйте ссылку подписки и вставьте её в приложение Happ вручную или обратитесь в поддержку.";
-    const linkBlock = subscriptionUrl
-      ? `\n\n🔗 Ссылка подписки:\n${subscriptionUrl}\n\nДля подключения нажмите кнопку «📲 Инструкции по установке»:\n\n${instrFallback}`
-      : "";
-    // два заголовка в зависимости от источника подписки.
-    const headline = isAdminGrant
-      ? `✅ Администратор выдал Вам подписку Тариф «<b>${escapeHtml(tariffName)}</b>»`
-      : `✅ <b>Тариф «${escapeHtml(tariffName)}»</b> оплачен и активирован`;
-    // если админ оставил комментарий — показываем клиенту.
-    const noteBlock = (isAdminGrant && adminNote)
-      ? `\n\n💬 <i>${escapeHtml(adminNote)}</i>`
-      : "";
-    const textClient = `${headline}.${noteBlock}${linkBlock}`;
-    const hasLocations = !!(payment?.tariff?.locations?.trim());
-    type Row = ({ text: string; callback_data: string } | { text: string; url: string })[];
-    const rows: Row[] = [];
-    if (subscriptionUrl) rows.push([{ text: "📲 Инструкции по установке", url: subscriptionUrl }]);
-    if (hasLocations && payment?.tariffId) {
-      rows.push([{ text: "🌐 Локации", callback_data: `menu:locations:${payment.tariffId}` }]);
+    const appBase = cfg.publicAppUrl?.trim().replace(/\/+$/, "");
+    const rows: NotifyInlineButton[][] = [];
+    if (appBase) {
+      rows.push([{ text: "Подключиться", web_app: { url: `${appBase}/cabinet/subscribe${remnawaveUuid ? `?uuid=${encodeURIComponent(remnawaveUuid)}` : ""}` }, style: "success" }]);
+    } else {
+      console.warn("[notifyTariffActivated] publicAppUrl is empty, skip direct web_app connect button");
     }
-    rows.push([{ text: "📋 Мои подписки", callback_data: "menu:my_subs" }]);
-    rows.push([{ text: cfg.botBackLabel ?? "🏠 Главное меню", callback_data: "menu:main" }]);
+    rows.push([{ text: "В меню", callback_data: "menu:main", style: "danger" }]);
     await sendTelegramToUser(client.telegramId, textClient, null, { inline_keyboard: rows }, {
       clientIdForBotToken: clientId,
     });

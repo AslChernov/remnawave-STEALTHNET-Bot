@@ -45,9 +45,9 @@ const DEFAULT_SUBSCRIPTION_PAGE_CONFIG: SubscriptionPageConfig = {
           blocks: [
             {
               title: { ru: "Установка приложения", en: "App Installation" },
-              description: { ru: "Откройте App Store и установите приложение. Запустите его и разрешите конфигурацию VPN.", en: "Open App Store, install the app, then allow VPN configuration." },
+              description: { ru: "Откройте App Store и установите приложение. Запустите его и разрешите добавление конфигурации.", en: "Open App Store, install the app, then allow adding the configuration." },
               buttons: [
-                { link: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215", text: { ru: "App Store", en: "App Store" }, type: "external" },
+                { link: "https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6788279553", text: { ru: "App Store", en: "App Store" }, type: "external" },
                 { link: "happ://add/{{SUBSCRIPTION_LINK}}", text: { ru: "Добавить подписку", en: "Add Subscription" }, type: "subscriptionLink" },
               ],
             },
@@ -94,7 +94,7 @@ const DEFAULT_SUBSCRIPTION_PAGE_CONFIG: SubscriptionPageConfig = {
           blocks: [
             {
               title: { ru: "Подключение на Mac", en: "Connect on Mac" },
-              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в настройках Clash for Windows/Mac, V2rayU, Surge или другого клиента на macOS.", en: "Copy the subscription link above and paste it in Clash, V2rayU, Surge or another VPN client on macOS." },
+              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в настройках Clash for Windows/Mac, V2rayU, Surge или другого клиента на macOS.", en: "Copy the subscription link above and paste it in Clash, V2rayU, Surge or another client on macOS." },
               buttons: [],
             },
           ],
@@ -109,7 +109,7 @@ const DEFAULT_SUBSCRIPTION_PAGE_CONFIG: SubscriptionPageConfig = {
           blocks: [
             {
               title: { ru: "Подключение в Windows", en: "Connect on Windows" },
-              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в Clash for Windows, v2rayN, Nekoray или другой клиент на Windows.", en: "Copy the subscription link above and paste it in Clash for Windows, v2rayN, Nekoray or another VPN client on Windows." },
+              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в Clash for Windows, v2rayN, Nekoray или другой клиент на Windows.", en: "Copy the subscription link above and paste it in Clash for Windows, v2rayN, Nekoray or another client on Windows." },
               buttons: [],
             },
           ],
@@ -139,7 +139,7 @@ const DEFAULT_SUBSCRIPTION_PAGE_CONFIG: SubscriptionPageConfig = {
           blocks: [
             {
               title: { ru: "Использование ссылки", en: "Using the link" },
-              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в ваше VPN-приложение.", en: "Copy the subscription link above and paste it into your VPN app." },
+              description: { ru: "Скопируйте ссылку на подписку выше и вставьте её в приложение для подключения.", en: "Copy the subscription link above and paste it into your connection app." },
               buttons: [],
             },
           ],
@@ -305,7 +305,7 @@ function ClassicSubscribePage() {
                 <div className="p-2.5 rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
                   <Wifi className="h-5 w-5" />
                 </div>
-                Подключение к VPN
+                Подключение
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5 relative z-10">
@@ -324,8 +324,8 @@ function ClassicSubscribePage() {
     );
   }
 
-  const linkCardRef = "Скопируйте ссылку и вставьте в приложение VPN или нажмите «Добавить подписку» в выбранном приложении ниже!";
-  const linkCardRefMiniapp = "Скопируйте ссылку и вставьте в приложение VPN выше или нажмите «Добавить подписку» в выбранном приложении.";
+  const linkCardRef = "Скопируйте ссылку и вставьте в приложение для подключения или нажмите «Добавить подписку» в выбранном приложении ниже!";
+  const linkCardRefMiniapp = "Скопируйте ссылку и вставьте в приложение для подключения выше или нажмите «Добавить подписку» в выбранном приложении.";
 
   const appsBlock = apps.length === 0 ? (
     <motion.div
@@ -340,7 +340,7 @@ function ClassicSubscribePage() {
               <Info className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-slate-600 dark:text-muted-foreground max-w-sm">
-              {isMiniapp ? "Список приложений пуст. Скопируйте ссылку ниже и вставьте её в любое приложение VPN (Happ, Stash, v2rayNG и др.)" : "Список приложений пуст. Скопируйте ссылку выше и вставьте её в любое приложение VPN (Happ, Stash, v2rayNG и др.)"} или настройте страницу подписки в админке (Настройки → Страница подписки).
+              {isMiniapp ? "Список приложений пуст. Скопируйте ссылку ниже и вставьте её в любое приложение для подключения (Happ, Stash, v2rayNG и др.)" : "Список приложений пуст. Скопируйте ссылку выше и вставьте её в любое приложение для подключения (Happ, Stash, v2rayNG и др.)"} или настройте страницу подписки в админке (Настройки → Страница подписки).
             </p>
           </div>
         </CardContent>
@@ -396,8 +396,8 @@ function ClassicSubscribePage() {
                     <div className="flex flex-wrap gap-2.5 pl-7 pt-1">
                       {block.buttons?.map((btn, btnIndex) => {
                         const isSubscription = btn.type === "subscriptionLink";
-                        // Бэкенд уже отдаёт зашифрованную (happ://crypt4/...) ссылку в subscriptionUrl,
-                        // поэтому шаблоны {{HAPP_CRYPT3_LINK}} и {{HAPP_CRYPT4_LINK}} разрешаются той
+                        // Бэкенд уже отдаёт зашифрованную (happ://crypt5/...) ссылку в subscriptionUrl,
+                        // поэтому шаблоны {{HAPP_CRYPT3_LINK}}, {{HAPP_CRYPT4_LINK}} и {{HAPP_CRYPT5_LINK}} разрешаются той
                         // же строкой — это безопасно: если ссылка не зашифрована (старая Remna),
                         // подставится обычный URL и Happ всё равно её примет.
                         const href = isSubscription
@@ -405,6 +405,7 @@ function ClassicSubscribePage() {
                               .replace(/\{\{SUBSCRIPTION_LINK\}\}/g, subscriptionUrl || "")
                               .replace(/\{\{HAPP_CRYPT3_LINK\}\}/g, subscriptionUrl || "")
                               .replace(/\{\{HAPP_CRYPT4_LINK\}\}/g, subscriptionUrl || "")
+                              .replace(/\{\{HAPP_CRYPT5_LINK\}\}/g, subscriptionUrl || "")
                               .replace(/\{\{USERNAME\}\}/g, "")
                           : btn.link;
                         const label = getText(btn.text, locale);
@@ -535,7 +536,7 @@ function ClassicSubscribePage() {
                   onClick={copyLink} 
                   className={cn(
                     "w-full gap-2 h-11 text-sm font-medium transition-all duration-300",
-                    copied ? "bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500/30" : "shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.02]"
+                    copied ? "bg-primary/15 text-primary hover:bg-primary/20" : "shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.02]"
                   )}
                 >
                   <AnimatePresence mode="wait" initial={false}>
@@ -645,7 +646,7 @@ function ClassicSubscribePage() {
               QR-код подписки
             </DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-muted-foreground/80">
-              Отсканируйте камерой телефона — в вашем приложении VPN. Например (Happ, Stash, v2rayNG и др.).
+              Отсканируйте камерой телефона в приложении для подключения. Например: Happ, Stash, v2rayNG и др.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-5 py-4">
@@ -657,7 +658,7 @@ function ClassicSubscribePage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-muted-foreground bg-slate-100/80 dark:bg-white/5 px-3 py-1.5 rounded-full border border-slate-200/50 dark:border-white/5">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-              Ссылка ведёт на конфигурацию VPN
+              Ссылка ведёт на конфигурацию подключения
             </div>
           </div>
         </DialogContent>

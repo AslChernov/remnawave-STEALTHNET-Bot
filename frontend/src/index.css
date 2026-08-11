@@ -2,6 +2,38 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@font-face {
+  font-family: "Gilroy";
+  src: url("/fonts/gilroy/Gilroy-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gilroy";
+  src: url("/fonts/gilroy/Gilroy-Semibold.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gilroy";
+  src: url("/fonts/gilroy/Gilroy-Semibold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gilroy";
+  src: url("/fonts/gilroy/Gilroy-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -82,7 +114,7 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Gilroy", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   /* Табличные цифры для денег/счётчиков/времени — не «прыгают». */
@@ -106,6 +138,192 @@
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border-color: hsl(var(--border));
+  }
+
+  @media (max-width: 640px) {
+    .dialog-content-solid {
+      max-width: calc(100vw - 1rem) !important;
+    }
+  }
+
+  .dialog-content-solid.purchase-modal-glass {
+    background-color: hsl(var(--card)) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .purchase-modal-shell {
+    transform-origin: center;
+  }
+
+  @media (max-height: 780px) and (max-width: 480px) {
+    .purchase-modal-shell {
+      top: 50% !important;
+      width: calc(100vw - 1rem) !important;
+      max-width: 370px !important;
+      max-height: none !important;
+      zoom: 0.9;
+      gap: 0.55rem !important;
+      padding: 0.875rem !important;
+    }
+
+    .purchase-modal-shell [role="heading"] {
+      font-size: 1.25rem !important;
+      line-height: 1.55rem !important;
+    }
+
+    .purchase-modal-shell [data-radix-dialog-description] {
+      font-size: 0.72rem !important;
+      line-height: 1rem !important;
+    }
+
+    .purchase-modal-body {
+      margin-top: 0 !important;
+      padding-bottom: 0 !important;
+      row-gap: 0.55rem !important;
+      overflow: visible !important;
+    }
+
+    .purchase-modal-body button {
+      min-height: 4.15rem !important;
+      border-radius: 1rem !important;
+      padding-top: 0.45rem !important;
+      padding-bottom: 0.45rem !important;
+    }
+
+    .purchase-modal-summary {
+      border-radius: 1rem !important;
+      padding: 0.7rem 0.85rem !important;
+    }
+
+    .purchase-modal-summary .text-2xl {
+      font-size: 1.65rem !important;
+      line-height: 1.95rem !important;
+    }
+
+    .purchase-modal-terms {
+      border-radius: 1rem !important;
+      gap: 0.55rem !important;
+      padding: 0.7rem 0.75rem !important;
+    }
+
+    .purchase-modal-terms label {
+      font-size: 0.72rem !important;
+      line-height: 1.05rem !important;
+    }
+
+    .purchase-modal-footer {
+      gap: 0.5rem !important;
+    }
+
+    .purchase-modal-footer button {
+      height: 2.5rem !important;
+      min-height: 2.5rem !important;
+    }
+  }
+
+  @media (max-height: 700px) and (max-width: 480px) {
+    .purchase-modal-shell {
+      zoom: 0.84;
+    }
+  }
+
+  @media (max-height: 620px) and (max-width: 480px) {
+    .purchase-modal-shell {
+      zoom: 0.78;
+    }
+  }
+
+  @media (max-height: 480px) and (orientation: landscape) and (max-width: 960px) {
+    .purchase-modal-shell {
+      top: 50% !important;
+      width: calc((100vw - 1.5rem) * 1.16) !important;
+      max-width: none !important;
+      max-height: none !important;
+      grid-template-columns: minmax(0, 1fr) 16rem !important;
+      grid-template-rows: auto auto auto auto !important;
+      gap: 0.5rem 0.65rem !important;
+      padding: 0.75rem !important;
+      zoom: 0.86;
+    }
+
+    .purchase-modal-shell > :first-child {
+      grid-column: 1 / -1;
+    }
+
+    .purchase-modal-shell [role="heading"] {
+      font-size: 1.15rem !important;
+      line-height: 1.4rem !important;
+    }
+
+    .purchase-modal-shell [data-radix-dialog-description] {
+      font-size: 0.68rem !important;
+      line-height: 0.95rem !important;
+    }
+
+    .purchase-modal-body {
+      grid-column: 1;
+      grid-row: 2 / 5;
+      margin-top: 0 !important;
+      padding-bottom: 0 !important;
+      row-gap: 0.45rem !important;
+      overflow: visible !important;
+    }
+
+    .purchase-modal-body button {
+      min-height: 3.9rem !important;
+      border-radius: 0.9rem !important;
+      padding-top: 0.4rem !important;
+      padding-bottom: 0.4rem !important;
+    }
+
+    .purchase-modal-summary {
+      grid-column: 2;
+      grid-row: 2;
+      border-radius: 0.9rem !important;
+      padding: 0.65rem 0.8rem !important;
+    }
+
+    .purchase-modal-summary .text-2xl {
+      font-size: 1.55rem !important;
+      line-height: 1.8rem !important;
+    }
+
+    .purchase-modal-terms {
+      grid-column: 2;
+      grid-row: 3;
+      border-radius: 0.9rem !important;
+      gap: 0.5rem !important;
+      padding: 0.65rem 0.7rem !important;
+    }
+
+    .purchase-modal-terms label {
+      font-size: 0.68rem !important;
+      line-height: 0.98rem !important;
+    }
+
+    .purchase-modal-footer {
+      grid-column: 2;
+      grid-row: 4;
+      gap: 0.45rem !important;
+    }
+
+    .purchase-modal-footer button {
+      height: 2.35rem !important;
+      min-height: 2.35rem !important;
+    }
+  }
+
+  @media (max-height: 400px) and (orientation: landscape) and (max-width: 960px) {
+    .purchase-modal-shell {
+      width: calc((100vw - 1rem) * 1.28) !important;
+      zoom: 0.78;
+    }
+  }
+
+  /* Панель навигации (хедер, сайдбар) */
+  .bg-background {
+    background-color: transparent !important;
   }
 
   /* Muted-зоны — плотные. */
@@ -152,10 +370,11 @@
 /* ── Карточка — вне @layer, чтобы гарантированно побить Tailwind utilities.
    Плотная поверхность вместо стекла (редизайн 2026). ── */
 .glass-card {
-  background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.04), 0 1px 3px rgba(2, 6, 23, 0.06);
+  background-color: color-mix(in srgb, hsl(var(--card)) 15%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, hsl(var(--foreground)) 10%, transparent);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 .dark .glass-card {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 2px 8px rgba(0, 0, 0, 0.35);

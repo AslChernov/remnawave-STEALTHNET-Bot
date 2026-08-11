@@ -412,7 +412,7 @@ export function StealthDashboard() {
             iconRight={<ChevronRight className="h-4 w-4 text-zinc-500" />}
             onClick={() => navigate("/cabinet/subscribe")}
           >
-            <span className="flex-1 text-left">Установить и настроить VPN</span>
+            <span className="flex-1 text-left">Установить и настроить</span>
           </StadiumButton>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -534,7 +534,7 @@ export function StealthDashboard() {
                 <button
                   type="button"
                   onClick={() => setPaySuccess(null)}
-                  className="mt-1 w-full h-12 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:opacity-90 active:scale-[0.98] transition shadow-[0_8px_24px_-8px_rgba(52,211,153,0.6)]"
+                  className="mt-1 w-full h-12 rounded-2xl text-base font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:scale-[0.98] transition shadow-[0_8px_24px_-8px_rgb(var(--stealth-accent)_/_0.55)]"
                 >
                   Отлично
                 </button>

@@ -1,6 +1,6 @@
 /**
  * STEALTHNET 4.2.0 — Telegram-бот
- * Полный функционал кабинета: главная, тарифы, профиль, пополнение, триал, реферальная ссылка, VPN.
+ * Полный функционал кабинета: главная, тарифы, профиль, пополнение, триал, реферальная ссылка, подключение.
  * Цветные кнопки: style primary / success / danger (Telegram Bot API).
  */
 
@@ -233,7 +233,7 @@ function subscribeKeyboard(channelInput: string, lang = "ru"): InlineMarkup {
 async function enforceSubscription(
   ctx: {
     from?: { id: number };
-    reply: (text: string, opts?: { reply_markup?: InlineMarkup }) => Promise<unknown>;
+    reply: (text: string, opts?: { entities?: CustomEmojiEntity[]; reply_markup?: InlineMarkup }) => Promise<unknown>;
     api: Api;
   },
   config: Awaited<ReturnType<typeof api.getPublicConfig>>,
@@ -248,13 +248,15 @@ async function enforceSubscription(
   if (result.state === "subscribed") return false;
   const msg = config.forceSubscribeMessage?.trim() || _t("subscribe.default_message", lang);
   if (result.state === "cannot_verify") {
+    const { text, entities } = applyMarkdownAndEmoji(`⚠️ ${msg}\n\n${_t("subscribe.cannot_verify", lang)}`, config?.botEmojis ?? null);
     await ctx.reply(
-      `⚠️ ${msg}\n\n${_t("subscribe.cannot_verify", lang)}`,
-      { reply_markup: subscribeKeyboard(channelId, lang) }
+      text,
+      { entities: entities?.length ? entities : undefined, reply_markup: subscribeKeyboard(channelId, lang) }
     );
     return true;
   }
-  await ctx.reply(`⚠️ ${msg}`, { reply_markup: subscribeKeyboard(channelId, lang) });
+  const { text, entities } = applyMarkdownAndEmoji(`⚠️ ${msg}`, config?.botEmojis ?? null);
+  await ctx.reply(text, { entities: entities?.length ? entities : undefined, reply_markup: subscribeKeyboard(channelId, lang) });
   return true;
 }
 
@@ -738,6 +740,7 @@ function t(texts: Record<string, string> | null | undefined, key: string): strin
 
 type CustomEmojiEntity =
   | { type: "custom_emoji"; offset: number; length: number; custom_emoji_id: string }
+  | { type: "text_link"; offset: number; length: number; url: string }
   | { type: "strikethrough"; offset: number; length: number }
   | { type: "bold"; offset: number; length: number }
   // моноширинный текст — копируется по тапу в Telegram.
@@ -754,10 +757,47 @@ const DEFAULT_EMOJI_UNICODE: Record<string, string> = {
   PACKAGE: "📦", TARIFFS: "📦", CARD: "💳", LINK: "🔗", PUZZLE: "👤", PROFILE: "👤",
   TRIAL: "🎁", SERVERS: "🌐", CONNECT: "🌐",
   CHART: "📊",
+  SUPPORT: "🧑‍💼", DOCUMENTS: "📄", TG_ID: "🆔", USERNAME: "👤", SUBS_COUNT: "🗒",
+  REF_EARNED: "💰", REF_WITHDRAWN: "💸", REF_SPENT: "🛒", REF_AVAILABLE: "💵",
+  REF_COPY_SITE: "📋", REF_COPY_BOT: "📋", REF_SHARE: "📢",
   STATUS_ACTIVE: "🟡", STATUS_EXPIRED: "🔴", STATUS_INACTIVE: "🔴",
   STATUS_LIMITED: "🟡", STATUS_DISABLED: "🔴",
 };
 const DEFAULT_CUSTOM_EMOJI_CHAR = "🙂";
+const LEADING_EMOJI_RE = /^(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u;
+
+function stripLeadingEmoji(text: string): string {
+  return text.replace(LEADING_EMOJI_RE, "");
+}
+
+function labelWithEmojiKey(
+  botEmojis: Record<string, { unicode?: string | null; tgEmojiId?: string | null }> | null | undefined,
+  key: string,
+  label: string,
+): { text: string; iconCustomEmojiId?: string } {
+  const entry = botEmojis?.[key];
+  const iconCustomEmojiId = entry?.tgEmojiId?.trim() || undefined;
+  if (iconCustomEmojiId) return { text: stripLeadingEmoji(label), iconCustomEmojiId };
+  const unicode = entry?.unicode?.trim() || DEFAULT_EMOJI_UNICODE[key] || "";
+  return { text: `${unicode} ${stripLeadingEmoji(label)}`.trim() };
+}
+
+function backToMainMenuButton(
+  botEmojis: Record<string, { unicode?: string | null; tgEmojiId?: string | null }> | null | undefined,
+  label: string,
+): { text: string; callback_data: string; icon_custom_emoji_id?: string } {
+  const entry = botEmojis?.BACK;
+  const baseLabel = label.trim() || "Главное меню";
+  const iconCustomEmojiId = entry?.tgEmojiId?.trim() || undefined;
+  if (iconCustomEmojiId) {
+    return { text: stripLeadingEmoji(baseLabel), callback_data: "menu:main", icon_custom_emoji_id: iconCustomEmojiId };
+  }
+  const unicode = entry?.unicode?.trim();
+  return {
+    text: unicode ? `${unicode} ${stripLeadingEmoji(baseLabel)}`.trim() : baseLabel,
+    callback_data: "menu:main",
+  };
+}
 
 const DEFAULT_MENU_EMOJI_KEY_BY_ID: Record<string, string> = {
   tariffs: "PACKAGE",
@@ -811,6 +851,14 @@ function titleWithEmoji(
   return { text, entities };
 }
 
+function isSafeMarkdownLinkUrl(url: string): boolean {
+  return /^(https?:\/\/|tg:\/\/)/i.test(url.trim());
+}
+
+function unescapeMarkdownLinkLabel(text: string): string {
+  return text.replace(/\\([\\[\]()])/g, "$1");
+}
+
 /**
  * расширенный парсер текста меню — поддерживает И custom-emoji
  * placeholder'ы `{{KEY}}` (как applyCustomEmojiPlaceholders), И markdown-жирный
@@ -831,6 +879,28 @@ function applyMarkdownAndEmoji(
   let i = 0;
   const n = rawText.length;
   while (i < n) {
+    // [label](https://...) / [label](tg://...) — ссылки в админском инфоблоке.
+    if (rawText[i] === "[") {
+      const labelEnd = rawText.indexOf("](", i + 1);
+      const urlEnd = labelEnd > i + 1 ? rawText.indexOf(")", labelEnd + 2) : -1;
+      if (labelEnd > i + 1 && urlEnd > labelEnd + 2) {
+        const label = unescapeMarkdownLinkLabel(rawText.slice(i + 1, labelEnd));
+        const url = rawText.slice(labelEnd + 2, urlEnd).trim();
+        if (label.trim() && label.length <= 160 && isSafeMarkdownLinkUrl(url)) {
+          const innerProcessed = applyMarkdownAndEmoji(label, botEmojis);
+          const off = out.length;
+          for (const e of innerProcessed.entities) {
+            entities.push({ ...e, offset: off + e.offset });
+          }
+          if (innerProcessed.text.length > 0) {
+            entities.push({ type: "text_link", offset: off, length: innerProcessed.text.length, url });
+          }
+          out += innerProcessed.text;
+          i = urlEnd + 1;
+          continue;
+        }
+      }
+    }
     // {{KEY}} — emoji placeholder
     if (rawText[i] === "{" && rawText[i + 1] === "{") {
       const end = rawText.indexOf("}}", i + 2);
@@ -954,11 +1024,10 @@ function titleWithOptionalEmoji(
   return titleWithEmojiAndCustomEmojis(emojiKey, rest, botEmojis);
 }
 
-/** Полный текст главного меню + entities для премиум-эмодзи в тексте (владелец бота должен иметь Telegram Premium). */
 /**
  * парсит сырой Remnawave user из item.subscription и возвращает
  * готовые поля для форматирования (статус-эмодзи, тип-эмодзи, дни, дата, трафик).
- * Используется и в welcome-блоке (formatSubLine), и в «Мои подписки» handler'е.
+ * Используется в «Мои подписки» и кнопках подписок.
  */
 function parseSubInfo(item: {
   type: "root" | "secondary";
@@ -1058,30 +1127,7 @@ function parseSubInfo(item: {
   return { idx, typeEmoji, statusEmojiBig, statusEmojiSmall, daysStr, dateStr, trafficSuffix, isExpired };
 }
 
-/**
- * форматирует строку для welcome-блока «Мои подписки» под главным меню.
- * Шаблон: «🟢 🌐 Подписка #N — N дн. до DD.MM.YYYY [| used/limit ГБ]».
- * **daysStr** обёрнуты в bold-markdown для applyMarkdownAndEmoji в pushRaw.
- */
-function formatSubLine(item: {
-  type: "root" | "secondary";
-  subscriptionIndex: number | null;
-  subscription: unknown;
-  /** T16 (12.05.2026) — название тарифа и кастомный эмодзи для главного меню. */
-  tariffDisplayName?: string | null;
-  tariffMenuEmoji?: string | null;
-}, template?: string): string {
-  const { idx, typeEmoji, statusEmojiBig, daysStr, dateStr, trafficSuffix } = parseSubInfo(item);
-  const tpl = (template && template.trim()) || "{{SUB_STATUS}} {{SUB_TYPE}} Подписка #{{SUB_NUM}} — **{{SUB_DAYS}}** до {{SUB_DATE}}{{SUB_TRAFFIC}}";
-  return tpl
-    .split("{{SUB_STATUS}}").join(statusEmojiBig)
-    .split("{{SUB_TYPE}}").join(typeEmoji)
-    .split("{{SUB_NUM}}").join(String(idx))
-    .split("{{SUB_DAYS}}").join(daysStr)
-    .split("{{SUB_DATE}}").join(dateStr)
-    .split("{{SUB_TRAFFIC}}").join(trafficSuffix);
-}
-
+/** Полный текст главного меню + entities для премиум-эмодзи в тексте (владелец бота должен иметь Telegram Premium). */
 function buildMainMenuText(opts: {
   serviceName: string;
   balance: number;
@@ -1095,24 +1141,8 @@ function buildMainMenuText(opts: {
   botEmojis?: Record<string, { unicode?: string; tgEmojiId?: string }> | null;
   /** Кастомный инфо-блок (тех. работы, акции, контакты). Скрывается если пусто. */
   infoBlock?: string | null;
-  /**
-   * список ВСЕХ подписок клиента (root + secondary), для блок подписок
-   * под welcomeGreeting (фейковая нагрузка + список). Если undefined — блок не
-   * рендерится (для других callers, без блока подписок).
-   */
-  allSubs?: {
-    items: Array<{
-      type: "root" | "secondary";
-      id: string;
-      subscriptionIndex: number | null;
-      subscription: unknown;
-      tariffDisplayName: string;
-      /** T16 (12.05.2026) — эмодзи-префикс тарифа для главного меню бота. */
-      tariffMenuEmoji?: string | null;
-    }>;
-  } | null;
 }): { text: string; entities: CustomEmojiEntity[] } {
-  const { serviceName, balance, currency, subscription, tariffDisplayName, menuTexts, menuLineVisibility, menuTextCustomEmojiIds, botEmojis, infoBlock, allSubs } = opts;
+  const { serviceName, balance, currency, subscription, tariffDisplayName, menuTexts, menuLineVisibility, menuTextCustomEmojiIds, botEmojis, infoBlock } = opts;
   const name = serviceName.trim() || "Кабинет";
   const balanceStr = formatMoney(balance, currency);
   const lines: string[] = [];
@@ -1140,30 +1170,6 @@ function buildMainMenuText(opts: {
   pushLine("welcomeGreeting", `**${t(menuTexts, "welcomeGreeting")}${t(menuTexts, "welcomeTitlePrefix")}${name}**`);
   // Баланс — сразу под шапкой (выше списка подписок), жирным.
   pushLine("balancePrefix", `**${t(menuTexts, "balancePrefix")}${balanceStr}**`);
-
-  // Блок «список подписок» — все root + secondary активные/полученные в подарок
-  // (как в «Мои подписки»), сразу после шапки.
-  if (allSubs !== undefined) {
-    // pushRaw тоже идёт через applyMarkdownAndEmoji — поддерживает **bold**
-    // (количество подписок, дни) и {{KEY}} placeholders.
-    const pushRaw = (text: string) => {
-      const { text: processed, entities } = applyMarkdownAndEmoji(text, botEmojis);
-      lines.push(processed);
-      lineStartKeys.push(null);
-      lineEntitiesByIndex.push(entities);
-    };
-    if (allSubs && allSubs.items.length > 0) {
-      pushRaw("");
-      pushLine("subsCountLabel", t(menuTexts, "subsCountLabel") + `**${allSubs.items.length}**`);
-      const sorted = [...allSubs.items].sort((a, b) => {
-        if (a.type !== b.type) return a.type === "root" ? -1 : 1;
-        return (a.subscriptionIndex ?? 0) - (b.subscriptionIndex ?? 0);
-      });
-      for (const item of sorted) {
-        pushRaw(formatSubLine(item, t(menuTexts, "subLineFormat")));
-      }
-    }
-  }
 
   const user = getSubUser(subscription);
   const url = getSubscriptionUrl(subscription);
@@ -1245,7 +1251,7 @@ function buildMainMenuText(opts: {
     lineStartKeys.push(null);
     lineEntitiesByIndex.push([]);
     for (const rawLine of trimmedInfo.split("\n")) {
-      const { text: processed, entities } = applyCustomEmojiPlaceholders(rawLine, botEmojis);
+      const { text: processed, entities } = applyMarkdownAndEmoji(rawLine, botEmojis);
       lines.push(processed);
       lineStartKeys.push(null);
       lineEntitiesByIndex.push(entities);
@@ -1261,7 +1267,7 @@ function buildMainMenuText(opts: {
       entities.push({ ...e, offset: e.offset + offset });
     }
     const key = lineStartKeys[i];
-    if (key && menuTextCustomEmojiIds?.[key] && !lineEntities.some((e) => e.offset === 0)) {
+    if (key && menuTextCustomEmojiIds?.[key] && !lineEntities.some((e) => e.type === "custom_emoji" && e.offset === 0)) {
       const line = lines[i]!;
       const firstLen = firstCharLengthUtf16(line);
       if (firstLen > 0) entities.push({ type: "custom_emoji", offset, length: firstLen, custom_emoji_id: menuTextCustomEmojiIds[key]! });
@@ -1329,6 +1335,31 @@ function botLogoUrl(config: { publicAppUrl?: string | null; logoBot?: string | n
 /** Экранирование текста для ячейки rich-таблицы (| и переводы строк ломают разметку). */
 function richCell(s: string | null | undefined): string {
   return String(s ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
+}
+
+function richTextSegment(s: string): string {
+  return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+function richInfoLine(raw: string): string {
+  const source = String(raw ?? "");
+  const linkRe = /\[((?:\\.|[^\]\\]){1,160})\]\((https?:\/\/[^\s)]+|tg:\/\/[^\s)]+)\)/g;
+  let out = "";
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = linkRe.exec(source))) {
+    out += richTextSegment(source.slice(last, match.index));
+    const label = unescapeMarkdownLinkLabel(match[1] ?? "").trim();
+    const url = (match[2] ?? "").trim();
+    if (label && isSafeMarkdownLinkUrl(url)) {
+      out += `[${richCell(label)}](${url})`;
+    } else {
+      out += richTextSegment(match[0] ?? "");
+    }
+    last = linkRe.lastIndex;
+  }
+  out += richTextSegment(source.slice(last));
+  return out.trim();
 }
 
 /** Компактный GB: "0.00"→"0", "5.00"→"5", "2.34"→"2.3" (чтобы ячейка таблицы не переносилась). */
@@ -1424,25 +1455,16 @@ async function sendRichMarkdown(
   return data;
 }
 
-/** Главное меню в формате Rich Markdown (логотип + заголовок + баланс + таблица подписок). */
+/** Главное меню в формате Rich Markdown (логотип + заголовок + баланс + инфо-блок). */
 function buildMainMenuRichMarkdown(opts: {
   serviceName: string;
   balance: number;
   currency: string;
   logoUrl: string | null;
-  allSubs?: {
-    items: Array<{
-      type: "root" | "secondary";
-      subscriptionIndex: number | null;
-      subscription: unknown;
-      tariffDisplayName: string;
-      tariffMenuEmoji?: string | null;
-    }>;
-  } | null;
   infoBlock?: string | null;
   menuTexts?: Record<string, string> | null;
 }): string {
-  const { serviceName, balance, currency, logoUrl, allSubs, infoBlock, menuTexts } = opts;
+  const { serviceName, balance, currency, logoUrl, infoBlock, menuTexts } = opts;
   const mt = menuTexts ?? null;
   const name = serviceName.trim() || "Кабинет";
   const out: string[] = [];
@@ -1452,43 +1474,10 @@ function buildMainMenuRichMarkdown(opts: {
   if (logoUrl) out.push(`![${richCell(name)}](${logoUrl})`, "");
   out.push(`**${t(mt, "balancePrefix")}${formatMoney(balance, currency)}**`, "");
 
-  const items = allSubs?.items ?? [];
-  if (items.length > 0) {
-    out.push(`## 🔢 Ваши подписки`, "");
-    out.push(`| Подписка | Осталось | Трафик | Устр. |`);
-    out.push(`|---|:---:|:---:|:---:|`);
-    const sorted = [...items].sort((a, b) => {
-      if (a.type !== b.type) return a.type === "root" ? -1 : 1;
-      return (a.subscriptionIndex ?? 0) - (b.subscriptionIndex ?? 0);
-    });
-    for (const it of sorted) {
-      const s = richSubStats(it.subscription);
-      const badge =
-        s.status === "ACTIVE" ? "🟢"
-        : s.status === "EXPIRED" ? "🔴"
-        : s.status === "LIMITED" ? "🟠"
-        : s.status === "DISABLED" ? "⚪"
-        : "🟡";
-      const emoji = it.tariffMenuEmoji ? `${it.tariffMenuEmoji} ` : "";
-      const left = s.daysLeft != null ? `${s.daysLeft} ${pluralDays(s.daysLeft)}` : "—";
-      const traffic =
-        s.trafficUsedGb != null && s.trafficLimitGb != null
-          ? `${gbCompact(s.trafficUsedGb)}/${gbCompact(s.trafficLimitGb)} GB`
-          : s.trafficUsedGb != null
-          ? `${gbCompact(s.trafficUsedGb)} GB`
-          : "—";
-      const devices = s.deviceLimit != null ? `${s.devicesUsed ?? 0}/${s.deviceLimit}` : "—";
-      out.push(`| ${badge} ${emoji}${richCell(it.tariffDisplayName)} | ${left} | ${traffic} | ${devices} |`);
-    }
-    out.push("");
-  } else {
-    out.push(`_Активных подписок пока нет — выбери тариф ниже._`, "");
-  }
-
   const info = infoBlock?.trim();
   if (info) {
     out.push("---", "");
-    for (const line of info.split("\n")) out.push(`> ${richCell(line)}`);
+    for (const line of info.split("\n")) out.push(`> ${richInfoLine(line)}`);
   }
   return out.join("\n").trim();
 }
@@ -1508,13 +1497,13 @@ async function editMessageContent(ctx: {
   const hasVideo = msg && typeof msg === "object" && "video" in msg && (msg as { video: unknown }).video != null;
   if (hasVideo && ctx.chat?.id) {
     await ctx.deleteMessage().catch(() => {});
-    return ctx.api.sendMessage(ctx.chat.id, text, { entities: entities?.length ? entities : undefined, reply_markup });
+    return ctx.api.sendMessage(ctx.chat.id, text, { entities: entities?.length ? entities : undefined, reply_markup: reply_markup as any });
   }
   const hasMediaWithCaption = hasPhoto || hasAnimation;
   const caption = text.length > TELEGRAM_CAPTION_MAX ? text.slice(0, TELEGRAM_CAPTION_MAX - 3) + "..." : text;
   const truncatedEntities = text.length > TELEGRAM_CAPTION_MAX && entities ? entities.filter((e) => e.offset + e.length <= TELEGRAM_CAPTION_MAX - 3) : entities;
-  if (hasMediaWithCaption) return ctx.editMessageCaption({ caption, caption_entities: truncatedEntities?.length ? truncatedEntities : undefined, reply_markup });
-  return ctx.editMessageText(text, { entities: entities?.length ? entities : undefined, reply_markup });
+  if (hasMediaWithCaption) return ctx.editMessageCaption({ caption, caption_entities: truncatedEntities?.length ? truncatedEntities : undefined, reply_markup: reply_markup as any });
+  return ctx.editMessageText(text, { entities: entities?.length ? entities : undefined, reply_markup: reply_markup as any });
 }
 
 /**
@@ -1539,9 +1528,9 @@ function buildHelpScreen(opts: {
   const lines: string[] = [];
   if (introRaw) lines.push(introRaw, "");
   // Часы работы НЕ хардкодим — они задаются в helpIntroText (см. админку), иначе дублировались бы.
-  lines.push(`🆔 Telegram ID: \`${opts.tgId}\``);
-  if (opts.tgUsername) lines.push(`👤 Username: @${opts.tgUsername}`);
-  lines.push(`🗒 Активных подписок: ${opts.subsCount}`);
+  lines.push(`{{TG_ID}} Telegram ID: \`${opts.tgId}\``);
+  if (opts.tgUsername) lines.push(`{{USERNAME}} Username: @${opts.tgUsername}`);
+  lines.push(`{{SUBS_COUNT}} Активных подписок: ${opts.subsCount}`);
   const { text, entities } = applyMarkdownAndEmoji(lines.join("\n"), opts.botEmojis ?? null);
   const markup = helpMainMenu(
     { support: opts.supportLink },
@@ -1549,6 +1538,7 @@ function buildHelpScreen(opts: {
     opts.backStyle,
     opts.emojiIds,
     opts.lang ?? "ru",
+    opts.botEmojis ?? null,
   );
   return { text, entities, markup };
 }
@@ -1940,15 +1930,28 @@ composer.command("start", async (ctx) => {
           try {
             const media = welcomeImage ? logoToMediaSource(welcomeImage) : null;
             const captionMax = TELEGRAM_CAPTION_MAX;
-            const safeText = welcomeText.length > captionMax ? welcomeText.slice(0, captionMax - 3) + "..." : welcomeText;
+            const rawSafeText = welcomeText.length > captionMax ? welcomeText.slice(0, captionMax - 3) + "..." : welcomeText;
+            const safeWelcome = applyMarkdownAndEmoji(rawSafeText, config?.botEmojis ?? null);
+            const fullWelcome = applyMarkdownAndEmoji(welcomeText, config?.botEmojis ?? null);
             if (media) {
               if (media.isGif) {
-                await ctx.replyWithAnimation(media.source, { caption: safeText || undefined, reply_markup: continueMarkup });
+                await ctx.replyWithAnimation(media.source, {
+                  caption: safeWelcome.text || undefined,
+                  caption_entities: safeWelcome.entities?.length ? safeWelcome.entities : undefined,
+                  reply_markup: continueMarkup,
+                });
               } else {
-                await ctx.replyWithPhoto(media.source, { caption: safeText || undefined, reply_markup: continueMarkup });
+                await ctx.replyWithPhoto(media.source, {
+                  caption: safeWelcome.text || undefined,
+                  caption_entities: safeWelcome.entities?.length ? safeWelcome.entities : undefined,
+                  reply_markup: continueMarkup,
+                });
               }
             } else {
-              await ctx.reply(welcomeText, { reply_markup: continueMarkup });
+              await ctx.reply(fullWelcome.text, {
+                entities: fullWelcome.entities?.length ? fullWelcome.entities : undefined,
+                reply_markup: continueMarkup,
+              });
             }
             // Если showOnce — отметим что приветствие показано (сохранится после первого «Войти»)
             return;
@@ -1964,7 +1967,7 @@ composer.command("start", async (ctx) => {
       api.getSubscription(auth.token).catch(() => ({ subscription: null })),
       api.getPublicProxyTariffs().catch(() => ({ items: [] })),
       api.getPublicSingboxTariffs().catch(() => ({ items: [] })),
-      // тянем все подписки клиента для блок подписок в welcome (нагрузка + список).
+      // тянем все подписки клиента для кнопки подключения: нужна любая root/secondary подписка.
       api.getAllSubscriptions(auth.token).catch(() => ({ items: [] })),
     ]);
     const vpnUrl = getSubscriptionUrl(subRes.subscription);
@@ -1989,7 +1992,6 @@ composer.command("start", async (ctx) => {
       menuTextCustomEmojiIds: config?.menuTextCustomEmojiIds ?? null,
       botEmojis: config?.botEmojis ?? null,
       infoBlock: config?.botInfoBlock ?? null,
-      allSubs: allSubsRes,
     });
     const caption = text.length > TELEGRAM_CAPTION_MAX ? text.slice(0, TELEGRAM_CAPTION_MAX - 3) + "..." : text;
     const captionEntities = text.length > TELEGRAM_CAPTION_MAX && entities.length ? entities.filter((e) => e.offset + e.length <= TELEGRAM_CAPTION_MAX - 3) : entities;
@@ -2027,7 +2029,6 @@ composer.command("start", async (ctx) => {
           balance: client?.balance ?? 0,
           currency: client?.preferredCurrency ?? config?.defaultCurrency ?? "usd",
           logoUrl: botLogoUrl(config),
-          allSubs: allSubsRes,
           infoBlock: config?.botInfoBlock ?? null,
           menuTexts: config?.botMenuTexts ?? config?.resolvedBotMenuTexts ?? null,
         });
@@ -2149,6 +2150,7 @@ composer.command("referral", async (ctx) => {
     return;
   }
   try {
+    const lang = getUserLang(userId);
     const client = await api.getMe(token);
     if (!client.referralCode) {
       await ctx.reply("Реферальная ссылка пока недоступна. Попробуйте позже.");
@@ -2163,52 +2165,53 @@ composer.command("referral", async (ctx) => {
     const p2 = stats?.referralPercentLevel2 ?? (cfg?.referralPercentLevel2 ?? 0);
     const fmt = (n: number) => `${Math.round(n)}₽`;
     const lines: string[] = [
-      "👥 Реферальная программа",
+      "Реферальная программа",
       "",
-      "Поделитесь ссылкой с друзьями и получайте процент со всех их пополнений! 🤝",
+      "Поделитесь ссылкой с друзьями и получайте процент со всех их пополнений!",
       "",
-      `👥 Рефералы 1 уровня: ${p1}%`,
+      `Рефералы 1 уровня: ${p1}%`,
       `Вы получаете ${p1}% от пополнений тех, кто перешёл по вашей ссылке.`,
       `• Переходов по вашей ссылке: ${stats?.l1Clicks ?? 0}`,
       `• Приобрели подписку: ${stats?.l1Purchased ?? 0}`,
       `• Доход с рефералов 1 уровня: ${fmt(stats?.l1Earned ?? 0)}`,
       "",
-      `🤝 Рефералы 2 уровня: ${p2}%`,
+      `Рефералы 2 уровня: ${p2}%`,
       `Вы получаете ${p2}% от пополнений рефералов ваших рефералов.`,
       `• Приглашено вашими рефералами: ${stats?.l2InvitesCount ?? 0}`,
       `• Доход с рефералов 2 уровня: ${fmt(stats?.l2Earned ?? 0)}`,
       "",
-      `💰 Ваш заработок (всего): ${fmt(stats?.totalEarned ?? 0)}`,
-      `💸 Выведено: ${fmt(stats?.totalWithdrawn ?? 0)}`,
-      `🛒 Потрачено: ${fmt(stats?.totalSpent ?? 0)}`,
-      `💵 Доступно: ${fmt(stats?.availableBalance ?? client.balance ?? 0)}`,
-      "",
-      "🔗 Ваша реферальная ссылка:",
-      "",
-      "Telegram Бот:",
-      linkBot,
+      `{{REF_EARNED}} Ваш заработок (всего): ${fmt(stats?.totalEarned ?? 0)}`,
+      `{{REF_WITHDRAWN}} Выведено: ${fmt(stats?.totalWithdrawn ?? 0)}`,
+      `{{REF_SPENT}} Потрачено: ${fmt(stats?.totalSpent ?? 0)}`,
+      `{{REF_AVAILABLE}} Доступно: ${fmt(stats?.availableBalance ?? client.balance ?? 0)}`,
     ];
-    if (linkSite) {
-      lines.push("", "Сайт:", linkSite);
-    }
-    lines.push("", "💡 С реферального баланса можно оплатить подписку или вывести эти средства на свой кошелёк.");
+    lines.push("", "С реферального баланса можно оплатить подписку или вывести эти средства на свой кошелёк.");
     // формат как в gift — `url=` + `text=`.
     // Ссылку В САМ ТЕКСТ НЕ кладём — она уже идёт через параметр `url=` и
     // выводится TG-клиентом ПЕРВОЙ строкой автоматически. Если продублировать
     // в shareText — получим две одинаковых ссылки подряд (баг юзера 14.05).
-    const shareText = `\n🛡 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.`;
+    const shareBody = (cfg?.botReferralShareText ?? "").trim()
+      || "Надёжный сервис, который реально работает!\n\nРаботает там, где другие не справляются.\n\nНажми на ссылку выше, чтобы подключиться.";
+    const shareText = `\n${shareBody}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(linkBot)}&text=${encodeURIComponent(shareText)}`;
-    const rows: ({ text: string; url: string } | { text: string; callback_data: string })[][] = [];
-    rows.push([{ text: "📢 Поделиться ссылкой", url: shareUrl }]);
-    rows.push([{ text: "💳 Оплатить/продлить доступ", callback_data: "menu:tariffs" }]);
-    // кнопка вывода скрывается тогглом из админки;
-    // мин. сумма — из настройки withdrawal_min_amount (была захардкожена 3000₽).
-    if (cfg?.withdrawalsEnabled !== false) {
-      rows.push([{ text: `💰 Заявка на вывод (от ${cfg?.withdrawalMinAmount ?? 3000}₽)`, callback_data: "withdraw:start" }]);
+    const rows: InlineMarkup["inline_keyboard"] = [];
+    if (linkSite) {
+      const siteLabel = labelWithEmojiKey(cfg?.botEmojis, "REF_COPY_SITE", _t("referral.copy_site", lang));
+      const siteButton: { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string } = { text: siteLabel.text, copy_text: { text: linkSite } };
+      if (siteLabel.iconCustomEmojiId) siteButton.icon_custom_emoji_id = siteLabel.iconCustomEmojiId;
+      rows.push([siteButton]);
     }
-    rows.push([{ text: "🏠 Главное меню", callback_data: "menu:main" }]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await ctx.reply(lines.join("\n"), { reply_markup: { inline_keyboard: rows as any } });
+    const botLabel = labelWithEmojiKey(cfg?.botEmojis, "REF_COPY_BOT", _t("referral.copy_bot", lang));
+    const botButton: { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string } = { text: botLabel.text, copy_text: { text: linkBot } };
+    if (botLabel.iconCustomEmojiId) botButton.icon_custom_emoji_id = botLabel.iconCustomEmojiId;
+    rows.push([botButton]);
+    const shareLabel = labelWithEmojiKey(cfg?.botEmojis, "REF_SHARE", "Поделиться ссылкой");
+    const shareButton: { text: string; url: string; icon_custom_emoji_id?: string } = { text: shareLabel.text, url: shareUrl };
+    if (shareLabel.iconCustomEmojiId) shareButton.icon_custom_emoji_id = shareLabel.iconCustomEmojiId;
+    rows.push([shareButton]);
+    rows.push([backToMainMenuButton(cfg?.botEmojis, cfg?.botBackLabel ?? _t("back_to_menu", lang))]);
+    const { text, entities } = applyMarkdownAndEmoji(lines.join("\n"), cfg?.botEmojis ?? null);
+    await ctx.reply(text, { entities: entities.length ? entities : undefined, reply_markup: { inline_keyboard: rows } as any });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Ошибка";
     await ctx.reply(`❌ ${msg}`);
@@ -2341,7 +2344,7 @@ async function showPaymentMethodsForTariff(ctx: any, userId: number, tariff: Tar
         }
       } else if (conv.mode === "replace") {
         // Глобальный single-режим (мульти-подписки выкл): покупка другого тарифа = ЖЁСТКАЯ замена.
-        convNote = `\n\n🔄 Внимание: покупка ДРУГОГО тарифа ЗАМЕНИТ текущую подписку ${subName}.\nСтарая подписка удалится, остаток ${conv.remainingDays ?? 0} дн. СГОРИТ — создастся новая на выбранный тариф (${conv.purchasedDays ?? 0} дн. с нуля). VPN-ссылка сохранится. Вторая подписка не создаётся.`;
+        convNote = `\n\n🔄 Внимание: покупка ДРУГОГО тарифа ЗАМЕНИТ текущую подписку ${subName}.\nСтарая подписка удалится, остаток ${conv.remainingDays ?? 0} дн. СГОРИТ — создастся новая на выбранный тариф (${conv.purchasedDays ?? 0} дн. с нуля). Ссылка подключения сохранится. Вторая подписка не создаётся.`;
       } else {
         const head = conv.subscription.isTrial
           ? "🔄 Пробная подписка станет платной"
@@ -2540,7 +2543,7 @@ composer.on("callback_query:data", async (ctx) => {
         api.getSubscription(token).catch(() => ({ subscription: null })),
         api.getPublicProxyTariffs().catch(() => ({ items: [] })),
         api.getPublicSingboxTariffs().catch(() => ({ items: [] })),
-        // для блок подписок в welcome.
+        // для кнопки подключения: нужна любая root/secondary подписка.
         api.getAllSubscriptions(token).catch(() => ({ items: [] })),
       ]);
       const vpnUrl = getSubscriptionUrl(subRes.subscription);
@@ -2563,7 +2566,6 @@ composer.on("callback_query:data", async (ctx) => {
         menuTextCustomEmojiIds: config?.menuTextCustomEmojiIds ?? null,
         botEmojis: config?.botEmojis ?? null,
         infoBlock: config?.botInfoBlock ?? null,
-        allSubs: allSubsRes,
       });
       const hasVideoInstructions = config?.videoInstructionsEnabled && (config?.videoInstructions?.length ?? 0) > 0;
       const hasSupportLinks = !!(config?.supportLink || config?.agreementLink || config?.offerLink || config?.instructionsLink || hasVideoInstructions);
@@ -3143,7 +3145,8 @@ composer.on("callback_query:data", async (ctx) => {
         const details = result.state === "cannot_verify"
           ? `\n\n${_t("subscribe.cannot_verify", lang)}`
           : "";
-        await editMessageContent(ctx, `⚠️ ${msg}${details}`, subscribeKeyboard(channelId, lang));
+        const { text: subText, entities: subEntities } = applyMarkdownAndEmoji(`⚠️ ${msg}${details}`, config?.botEmojis ?? null);
+        await editMessageContent(ctx, subText, subscribeKeyboard(channelId, lang), subEntities);
         return;
       }
     }
@@ -3179,7 +3182,7 @@ composer.on("callback_query:data", async (ctx) => {
         api.getSubscription(token).catch(() => ({ subscription: null })),
         api.getPublicProxyTariffs().catch(() => ({ items: [] })),
         api.getPublicSingboxTariffs().catch(() => ({ items: [] })),
-        // для блок подписок в welcome (нагрузка + список подписок).
+        // для кнопки подключения: нужна любая root/secondary подписка.
         api.getAllSubscriptions(token).catch(() => ({ items: [] })),
       ]);
       if (client?.preferredLang) setUserLang(userId, client.preferredLang);
@@ -3204,7 +3207,6 @@ composer.on("callback_query:data", async (ctx) => {
         menuTextCustomEmojiIds: config?.menuTextCustomEmojiIds ?? null,
         botEmojis: config?.botEmojis ?? null,
         infoBlock: config?.botInfoBlock ?? null,
-        allSubs: allSubsRes,
       });
       const hasVideoInstructionsCb = config?.videoInstructionsEnabled && (config?.videoInstructions?.length ?? 0) > 0;
       const hasSupportLinks = !!(config?.supportLink || config?.agreementLink || config?.offerLink || config?.instructionsLink || hasVideoInstructionsCb);
@@ -3289,9 +3291,10 @@ composer.on("callback_query:data", async (ctx) => {
     // T11 (11.05.2026) — подменю «📄 Документы» по эталону скрина 16.
     if (data === "menu:docs") {
       const lang = getUserLang(userId);
+      const documentsTitle = titleWithEmoji("DOCUMENTS", "Документы", config?.botEmojis);
       await editMessageContent(
         ctx,
-        "📄 Документы",
+        documentsTitle.text,
         documentsSubMenu(
           {
             agreement: config?.agreementLink,
@@ -3303,6 +3306,7 @@ composer.on("callback_query:data", async (ctx) => {
           innerEmojiIds,
           lang,
         ),
+        documentsTitle.entities,
       );
       return;
     }
@@ -4025,7 +4029,7 @@ composer.on("callback_query:data", async (ctx) => {
           if (convBal && convBal.willConvert && (convBal.mode !== "extend" || (convBal.othersToRemove ?? 0) > 0)) {
             const subNameBal = convBal.subscription?.tariffName ? `«${convBal.subscription.tariffName}»` : "текущую подписку";
             const bodyBal = convBal.mode === "replace"
-              ? `Старая подписка удалится, остаток ${convBal.remainingDays ?? 0} дн. СГОРИТ — создастся новая на выбранный тариф (${convBal.purchasedDays ?? 0} дн. с нуля). VPN-ссылка сохранится.`
+              ? `Старая подписка удалится, остаток ${convBal.remainingDays ?? 0} дн. СГОРИТ — создастся новая на выбранный тариф (${convBal.purchasedDays ?? 0} дн. с нуля). Ссылка подключения сохранится.`
               : convBal.mode === "extend"
                 ? `Этот тариф у вас уже есть — он будет продлён.`
                 : `Текущая подписка будет переведена на новый тариф. Остаток ${convBal.remainingDays ?? 0} дн. пересчитается в ${convBal.convertedDays ?? 0} дн. по цене нового тарифа.`;
@@ -6476,48 +6480,35 @@ if (data.startsWith("topup_rollypay:")) {
       // вступление и футер редактируются в админке («Тексты бота» →
       // bot_referral_intro_text / bot_referral_footer_text); раньше были захардкожены.
       const referralIntro = (config?.botReferralIntroText ?? "").trim()
-        || "Поделитесь ссылкой с друзьями и получайте процент со всех их пополнений! 🤝";
+        || "Поделитесь ссылкой с друзьями и получайте процент со всех их пополнений!";
       const lines: string[] = [
-        "👥 Реферальная программа",
+        "Реферальная программа",
         "",
         referralIntro,
         "",
-        `👥 Рефералы 1 уровня: ${p1}%`,
+        `Рефералы 1 уровня: ${p1}%`,
         `Вы получаете ${p1}% от пополнений тех, кто перешёл по вашей ссылке.`,
         `• Переходов по вашей ссылке: ${stats?.l1Clicks ?? 0}`,
         `• Приобрели подписку: ${stats?.l1Purchased ?? 0}`,
         `• Доход с рефералов 1 уровня: ${fmt(stats?.l1Earned ?? 0)}`,
         "",
-        `🤝 Рефералы 2 уровня: ${p2}%`,
+        `Рефералы 2 уровня: ${p2}%`,
         `Вы получаете ${p2}% от пополнений рефералов ваших рефералов.`,
         `• Приглашено вашими рефералами: ${stats?.l2InvitesCount ?? 0}`,
         `• Доход с рефералов 2 уровня: ${fmt(stats?.l2Earned ?? 0)}`,
         "",
-        `💰 Ваш заработок (всего): ${fmt(stats?.totalEarned ?? 0)}`,
-        `💸 Выведено: ${fmt(stats?.totalWithdrawn ?? 0)}`,
-        `🛒 Потрачено: ${fmt(stats?.totalSpent ?? 0)}`,
-        `💵 Доступно: ${fmt(stats?.availableBalance ?? client.balance ?? 0)}`,
-        "",
-        "🔗 Ваша реферальная ссылка:",
-        "",
-        "Telegram Бот:",
-        linkBot,
+        `{{REF_EARNED}} Ваш заработок (всего): ${fmt(stats?.totalEarned ?? 0)}`,
+        `{{REF_WITHDRAWN}} Выведено: ${fmt(stats?.totalWithdrawn ?? 0)}`,
+        `{{REF_SPENT}} Потрачено: ${fmt(stats?.totalSpent ?? 0)}`,
+        `{{REF_AVAILABLE}} Доступно: ${fmt(stats?.availableBalance ?? client.balance ?? 0)}`,
       ];
-      if (linkSite) {
-        lines.push("");
-        lines.push("Сайт:");
-        lines.push(linkSite);
-      }
       lines.push("");
       lines.push(
         (config?.botReferralFooterText ?? "").trim()
-          || "💡 С реферального баланса можно оплатить подписку или вывести эти средства на свой кошелёк.",
+          || "С реферального баланса можно оплатить подписку или вывести эти средства на свой кошелёк.",
       );
 
-      // T-fix (11.05.2026): кнопки по эталону клиента.
-      // 1. «📢 Поделиться ссылкой» — t.me/share URL для пересылки
-      // 2. «💳 Оплатить/продлить доступ» — callback menu:tariffs (можно купить с реф. баланса)
-      // 3. «💰 Заявка на вывод (от 3000₽)» — conversation flow withdraw:start
+      // Кнопки по эталону 4.3.0: копирование ссылки сайта/бота + шаринг.
       // формат как в gift — `url=` + `text=`.
       // Ссылку В САМ ТЕКСТ НЕ кладём — она уже идёт через параметр `url=` и
       // выводится TG-клиентом ПЕРВОЙ строкой автоматически. Если продублировать
@@ -6525,21 +6516,28 @@ if (data.startsWith("topup_rollypay:")) {
       // текст шаринга редактируется в админке («Тексты бота» → bot_referral_share_text).
       // Ведущий \n обязателен: ссылка из `url=` рисуется TG-клиентом первой строкой.
       const shareBody = (config?.botReferralShareText ?? "").trim()
-        || "🛡 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.";
+        || "Надёжный сервис, который реально работает!\n\nРаботает там, где другие не справляются.\n\nНажми на ссылку выше, чтобы подключиться.";
       const shareText = `\n${shareBody}`;
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(linkBot)}&text=${encodeURIComponent(shareText)}`;
-      const rows: ({ text: string; url: string } | { text: string; callback_data: string })[][] = [];
-      rows.push([{ text: "📢 Поделиться ссылкой", url: shareUrl }]);
-      rows.push([{ text: "💳 Оплатить/продлить доступ", callback_data: "menu:tariffs" }]);
-      // кнопка вывода скрывается тогглом; мин. сумма из настройки.
-      if (config?.withdrawalsEnabled !== false) {
-        rows.push([{ text: `💰 Заявка на вывод (от ${config?.withdrawalMinAmount ?? 3000}₽)`, callback_data: "withdraw:start" }]);
+      const rows: InlineMarkup["inline_keyboard"] = [];
+      if (linkSite) {
+        const siteLabel = labelWithEmojiKey(config?.botEmojis, "REF_COPY_SITE", _t("referral.copy_site", lang));
+        const siteButton: { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string } = { text: siteLabel.text, copy_text: { text: linkSite } };
+        if (siteLabel.iconCustomEmojiId) siteButton.icon_custom_emoji_id = siteLabel.iconCustomEmojiId;
+        rows.push([siteButton]);
       }
-      rows.push([{ text: "🏠 Главное меню", callback_data: "menu:main" }]);
+      const botLabel = labelWithEmojiKey(config?.botEmojis, "REF_COPY_BOT", _t("referral.copy_bot", lang));
+      const botButton: { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string } = { text: botLabel.text, copy_text: { text: linkBot } };
+      if (botLabel.iconCustomEmojiId) botButton.icon_custom_emoji_id = botLabel.iconCustomEmojiId;
+      rows.push([botButton]);
+      const shareLabel = labelWithEmojiKey(config?.botEmojis, "REF_SHARE", "Поделиться ссылкой");
+      const shareButton: { text: string; url: string; icon_custom_emoji_id?: string } = { text: shareLabel.text, url: shareUrl };
+      if (shareLabel.iconCustomEmojiId) shareButton.icon_custom_emoji_id = shareLabel.iconCustomEmojiId;
+      rows.push([shareButton]);
+      rows.push([backToMainMenuButton(config?.botEmojis, config?.botBackLabel ?? _t("back_to_menu", lang))]);
 
-      const { text: refText, entities: refEntities } = titleWithEmoji("LINK", lines.join("\n"), config?.botEmojis);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await editMessageContent(ctx, refText, { inline_keyboard: rows as any }, refEntities);
+      const { text: refText, entities: refEntities } = applyMarkdownAndEmoji(lines.join("\n"), config?.botEmojis ?? null);
+      await editMessageContent(ctx, refText, { inline_keyboard: rows }, refEntities);
       return;
     }
 
@@ -6812,7 +6810,7 @@ if (data.startsWith("topup_rollypay:")) {
               ],
             });
           } else if (url) {
-            await editMessageContent(ctx, `📲 Ссылка на подписку:\n\n${url}\n\nОткройте её в приложении VPN.`, backToMenu(config?.botBackLabel ?? null, innerStyles?.back, innerEmojiIds));
+            await editMessageContent(ctx, `📲 Ссылка на подписку:\n\n${url}\n\nОткройте её в приложении для подключения.`, backToMenu(config?.botBackLabel ?? null, innerStyles?.back, innerEmojiIds));
           } else {
             await editMessageContent(ctx, _t("vpn.link_unavailable", lang), backToMenu(config?.botBackLabel ?? null, innerStyles?.back, innerEmojiIds));
           }
@@ -7330,10 +7328,10 @@ if (data.startsWith("topup_rollypay:")) {
             },
           );
         } else if (url) {
-          // Нет publicAppUrl и нет Remna sub-page — показываем сырую ссылку.
+          // Нет publicAppUrl и нет Remna sub-page — показываем ссылку напрямую.
           await editMessageContent(
             ctx,
-            `📲 Ссылка на подписку:\n\n${url}\n\nОткройте её в приложении VPN.\n\n${fallbackSub}`,
+            `📲 Ссылка на подписку:\n\n${url}\n\nОткройте её в приложении для подключения.\n\n${fallbackSub}`,
             { inline_keyboard: [[{ text: backToSubLabel(config?.botEmojis ?? null), callback_data: backCallback }]] },
           );
         } else {

@@ -18,6 +18,9 @@ keys/
 nginx/ssl/
 nginx/nginx.conf
 
+# Licensed local webfonts (keep binaries outside the public repository)
+frontend/public/fonts/gilroy/*.ttf
+
 # ── Claude / AI tooling (память содержит креды!) ─
 .claude/
 .opencode/

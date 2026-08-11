@@ -34,7 +34,7 @@ export function StealthLayout() {
     api.getPublicConfig().then(setConfig).catch(() => {});
   }, []);
 
-  const brand = (config?.serviceName ?? "STEALTHNET").toUpperCase();
+  const brand = (config?.serviceName ?? "ALTETH").toUpperCase();
   const accent = hexToRgbTriple((config as { stealthAccent?: string | null } | null)?.stealthAccent);
 
   // Ставим акцент ГЛОБАЛЬНО на :root — контент кабинета рендерится в отдельном
@@ -59,7 +59,7 @@ export function StealthLayout() {
           />
           <h1
             className="text-base md:text-lg font-bold tracking-[0.18em] text-white"
-            style={{ fontFamily: '"Syncopate", "Inter", system-ui, sans-serif' }}
+            style={{ fontFamily: '"Syncopate", "Gilroy", system-ui, sans-serif' }}
           >
             {brand}
           </h1>

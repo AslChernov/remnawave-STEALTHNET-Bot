@@ -26,7 +26,7 @@ import {
   notifyAdminsAboutNewTicket,
 } from "../notification/telegram-notify.service.js";
 import { requireClientAuth } from "./client.middleware.js";
-import { remnaCreateUser, remnaUpdateUser, isRemnaConfigured, remnaGetUser, remnaGetUserByUsername, remnaGetUserByEmail, remnaGetUserByTelegramId, remnaGetUserByShortUuid, extractRemnaUuid, remnaUsernameFromClient, remnaGetUserHwidDevices, remnaDeleteUserHwidDevice, encryptSubscriptionUrlInPlace, remnaRevokeUserSubscription } from "../remna/remna.client.js";
+import { remnaCreateUser, remnaUpdateUser, isRemnaConfigured, remnaGetUser, remnaGetUserByUsername, remnaGetUserByEmail, remnaGetUserByTelegramId, remnaGetUserByShortUuid, extractRemnaUuid, remnaUsernameFromClient, remnaGetUserHwidDevices, remnaDeleteUserHwidDevice, encryptSubscriptionUrlInPlace, remnaEncryptHappLink, remnaRevokeUserSubscription } from "../remna/remna.client.js";
 import { isSmtpConfigured, isMailConfigured, mailConfigFromSystem, sendEmail } from "../mail/mail.service.js";
 import { renderEmailTemplate } from "../email-templates/email-templates.service.js";
 import { signClientPasswordResetToken, verifyClientPasswordResetToken } from "../auth/auth.service.js";
@@ -148,6 +148,24 @@ async function calculateDevicesProrataPriceCoefficientForPrimary(clientId: strin
 function calculateExpireAt(currentExpireAt: Date | null, durationDays: number): string {
   const base = currentExpireAt ?? new Date();
   return new Date(base.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
+const LEGACY_HAPP_RU_APPSTORE_URLS = new Set([
+  "https://apps.apple.com/ru/app/happ-proxy-utility/id6783623643",
+  "https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973",
+]);
+const HAPP_RU_APPSTORE_URL = "https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6788279553";
+
+/** Replaces only the removed RU Happ listing while preserving admin-configured links. */
+function migrateSubscriptionPageConfig(value: unknown): unknown {
+  if (typeof value === "string" && LEGACY_HAPP_RU_APPSTORE_URLS.has(value)) return HAPP_RU_APPSTORE_URL;
+  if (Array.isArray(value)) return value.map(migrateSubscriptionPageConfig);
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    out[key] = migrateSubscriptionPageConfig(item);
+  }
+  return out;
 }
 
 /**
@@ -350,7 +368,7 @@ clientAuthRouter.post("/register", async (req, res) => {
     const verificationTpl = await renderEmailTemplate("email_verification", {
       verifyUrl: verificationLink,
       hours: "24",
-      serviceName: config.serviceName ?? "STEALTHNET",
+      serviceName: config.serviceName ?? "ALTETH",
     });
     const sendResult = verificationTpl
       ? await sendEmail(smtpConfig, data.email!, verificationTpl.subject, verificationTpl.body)
@@ -657,7 +675,7 @@ clientAuthRouter.post("/forgot-password", async (req, res) => {
     const resetTpl = await renderEmailTemplate("password_reset", {
       resetUrl: resetLink,
       minutes: "60",
-      serviceName: config.serviceName ?? "STEALTHNET",
+      serviceName: config.serviceName ?? "ALTETH",
     });
     if (resetTpl) {
       await sendEmail(smtpConfig, client.email ?? email, resetTpl.subject, resetTpl.body).catch(() => {});
@@ -1413,7 +1431,7 @@ clientRouter.post("/2fa/setup", async (req, res) => {
   if (current?.totpEnabled) return res.status(400).json({ message: "2FA уже включена" });
   const secret = generateSecret();
   const label = client.email?.trim() || `client-${client.id}`;
-  const otpauthUrl = generateURI({ issuer: "STEALTHNET", label, secret });
+  const otpauthUrl = generateURI({ issuer: "ALTETH", label, secret });
   await prisma.client.update({
     where: { id: client.id },
     data: { totpSecret: secret, totpEnabled: false },
@@ -1947,7 +1965,7 @@ clientRouter.post("/link-email-request", async (req, res) => {
   const linkTpl = await renderEmailTemplate("link_email", {
     verifyUrl: verificationLink,
     hours: "24",
-    serviceName: config.serviceName ?? "STEALTHNET",
+    serviceName: config.serviceName ?? "ALTETH",
   });
   const sendResult = linkTpl
     ? await sendEmail(smtpConfig, email, linkTpl.subject, linkTpl.body)
@@ -2470,6 +2488,10 @@ clientRouter.post("/trials/:id/activate", async (req, res) => {
         ?? (r.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.data
         ?? (r.data as Record<string, unknown> | null);
       subscriptionUrl = (inner as { subscriptionUrl?: string } | null)?.subscriptionUrl ?? null;
+      const cfg = await getSystemConfig();
+      if (cfg.happCryptEnabled && subscriptionUrl) {
+        subscriptionUrl = await remnaEncryptHappLink(subscriptionUrl) ?? subscriptionUrl;
+      }
     } catch { /* ignore */ }
   }
 
@@ -2624,7 +2646,7 @@ clientRouter.post("/promo/activate", async (req, res) => {
       });
       existingUuid = extractRemnaUuid(createRes.data);
     }
-    if (!existingUuid) return res.status(502).json({ message: "Ошибка создания пользователя VPN" });
+    if (!existingUuid) return res.status(502).json({ message: "Ошибка создания пользователя Remna" });
 
     await remnaUpdateUser({ uuid: existingUuid, expireAt, trafficLimitBytes, hwidDeviceLimit, activeInternalSquads: [group.squadUuid] });
 
@@ -2763,7 +2785,7 @@ clientRouter.post("/promo-code/activate", async (req, res) => {
       });
       existingUuid = extractRemnaUuid(createRes.data);
     }
-    if (!existingUuid) return res.status(502).json({ message: "Ошибка создания пользователя VPN" });
+    if (!existingUuid) return res.status(502).json({ message: "Ошибка создания пользователя Remna" });
 
     await remnaUpdateUser({ uuid: existingUuid, expireAt, trafficLimitBytes, hwidDeviceLimit, activeInternalSquads: [promo.squadUuid] });
     // Не вызываем add-users: по api-1.yaml эндпоинт добавляет ВСЕХ пользователей в сквад.
@@ -2923,8 +2945,7 @@ clientRouter.get("/subscription", async (req, res) => {
     return res.json({ subscription: null, tariffDisplayName: null, currentPricePerDay: null, message: result.error });
   }
 
-  // Опциональное шифрование subscriptionUrl в happ://crypt4/... — настройка happCryptEnabled.
-  // По умолчанию выключено: crypt4-ссылка длинная (1500+ символов).
+  // Опциональное шифрование subscriptionUrl в happ://crypt5/... — настройка happCryptEnabled.
   const subCfg = await getSystemConfig();
   if (subCfg.happCryptEnabled) {
     await encryptSubscriptionUrlInPlace(result.data);
@@ -3307,6 +3328,10 @@ clientRouter.post("/subscription/:type/:id/reissue", async (req, res) => {
     await remnaRevokeUserSubscription(targetUuid);
     // Достаём свежий subscription URL.
     const fresh = await remnaGetUser(targetUuid);
+    const reissueCfg = await getSystemConfig();
+    if (reissueCfg.happCryptEnabled) {
+      await encryptSubscriptionUrlInPlace(fresh.data);
+    }
     const inner = (fresh.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.response
       ?? (fresh.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.data
       ?? (fresh.data as Record<string, unknown> | null);
@@ -3529,7 +3554,7 @@ clientRouter.post("/devices/delete", async (req, res) => {
       return res.status(404).json({ message: "Подписка не найдена" });
     }
     if (!sub.remnawaveUuid) {
-      return res.status(400).json({ message: "Подписка не привязана к VPN" });
+      return res.status(400).json({ message: "Подписка не привязана к Remna" });
     }
     targetUuid = sub.remnawaveUuid;
   } else {
@@ -3908,7 +3933,7 @@ clientRouter.post("/payments/platega", async (req, res) => {
     return res.status(400).json({ message: "Метод оплаты недоступен" });
   }
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "ALTETH";
   const orderId = randomUUID();
   const paymentKind = tariffIdToStore ? "tariff" : proxyTariffIdToStore ? "proxy" : singboxTariffIdToStore ? "singbox" : metadataExtra ? "option" : "topup";
   const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
@@ -4291,7 +4316,7 @@ clientRouter.post("/payments/balance", async (req, res) => {
   if (extendsSecondarySubId) {
     const sec = await prisma.subscription.findUnique({
       where: { id: extendsSecondarySubId },
-      select: { ownerId: true, giftedToClientId: true },
+      select: { ownerId: true, giftedToClientId: true, tariffId: true },
     });
     if (!sec || (sec.ownerId !== clientRaw.id && sec.giftedToClientId !== clientRaw.id)) {
       await prisma.client.update({ where: { id: clientRaw.id }, data: { balance: { increment: tariffPaySnap.amount } } }).catch(() => {});
@@ -4306,6 +4331,9 @@ clientRouter.post("/payments/balance", async (req, res) => {
       // «продлить без устройств» — обработка внутри extendSecondarySubscription
       // (обнуление счётчиков + кик HWID), отдельный helper-вызов ниже больше не нужен.
       removeExtrasOnActivate === true,
+      undefined,
+      undefined,
+      sec.tariffId === tariff.id && deviceCount != null,
     );
     isExtendingSecondary = true;
     createdSubscriptionId = extendsSecondarySubId;
@@ -4330,6 +4358,7 @@ clientRouter.post("/payments/balance", async (req, res) => {
         // тот же тариф → продление (стек); другой → convert (мульти вкл) / hardReplace (мульти выкл, дни сгорают).
         /* convertMode */ multiSubEnabledBal && !convertible.sameTariff,
         /* hardReplace */ !multiSubEnabledBal && !convertible.sameTariff,
+        /* replaceExtraDevices */ convertible.sameTariff && deviceCount != null,
       );
       isConverted = activateResult.ok && !convertible.sameTariff;
       isExtendingSecondary = isExtendingSecondary || (activateResult.ok && convertible.sameTariff);
@@ -4805,7 +4834,7 @@ clientRouter.post("/yoomoney/request-topup", async (req, res) => {
   const receiver = config.yoomoneyReceiverWallet?.trim();
   if (!receiver) return res.status(503).json({ message: "ЮMoney не настроен" });
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "ALTETH";
   const amountRounded = Math.round(amount * 100) / 100;
   const orderId = randomUUID();
   const topSnap = await paymentSnapshotTopup(client.id, amountRounded);
@@ -5090,7 +5119,7 @@ clientRouter.post("/yoomoney/create-form-payment", async (req, res) => {
     }),
   });
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "ALTETH";
   const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
   const successURL = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : "";
   const targets = tariffIdToStore
@@ -5474,7 +5503,7 @@ clientRouter.post("/yookassa/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "ALTETH";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     // T-pay-wait (портировано из WolfVPN): после оплаты ЮKassa возвращаем на страницу ожидания (polling статуса).
     const returnUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : "";
@@ -5796,7 +5825,7 @@ clientRouter.post("/cryptopay/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "ALTETH";
     // добавляем tg:<id> в description для удобного поиска
     // платежей в кабинете CryptoPay (зеркалит логику YooKassa).
     const cryptoClient = await prisma.client.findUnique({
@@ -6089,7 +6118,7 @@ clientRouter.post("/heleket/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "ALTETH";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const urlCallback = appUrl ? `${appUrl}/api/webhooks/heleket` : undefined;
     const urlSuccess = appUrl ? `${appUrl}/cabinet?heleket=success` : undefined;
@@ -6635,7 +6664,7 @@ clientRouter.post("/lava/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "ALTETH";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const hookUrl = appUrl ? `${appUrl}/api/webhooks/lava` : undefined;
     const successUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : undefined;
@@ -7223,7 +7252,7 @@ clientRouter.post("/overpay/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "ALTETH";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const returnUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : undefined;
 
@@ -7308,14 +7337,14 @@ clientRouter.post("/ai/chat", async (req, res) => {
     if (fallback2) modelsToTry.push(fallback2);
     if (fallback3) modelsToTry.push(fallback3);
 
-    const systemPromptText = (config as { aiSystemPrompt?: string | null }).aiSystemPrompt?.trim() || "Ты — лучший менеджер техподдержки VPN-сервиса. Твоя цель — вежливо, быстро и точно помогать пользователям с настройкой VPN, тарифами и решением технических проблем. Отвечай кратко и по делу.";
+    const systemPromptText = (config as { aiSystemPrompt?: string | null }).aiSystemPrompt?.trim() || "Ты — лучший менеджер техподдержки сервиса доступа. Твоя цель — вежливо, быстро и точно помогать пользователям с настройкой подключения, тарифами и решением технических проблем. Отвечай кратко и по делу.";
 
     const vpnTariffs = await prisma.tariff.findMany({ orderBy: { price: 'asc' } });
     const proxyTariffs = await prisma.proxyTariff.findMany({ where: { enabled: true }, orderBy: { price: 'asc' } });
     const singboxTariffs = await prisma.singboxTariff.findMany({ where: { enabled: true }, orderBy: { price: 'asc' } });
 
     let tariffsContext = "\n\nАКТУАЛЬНАЯ ИНФОРМАЦИЯ О ТАРИФАХ ДЛЯ ПОЛЬЗОВАТЕЛЯ:\nОбязательно используй только эти тарифы, если пользователь спрашивает про цены.\n";
-    if (vpnTariffs.length > 0) tariffsContext += "VPN Тарифы: " + vpnTariffs.map(t => `${t.name} (${t.price} ${t.currency.toUpperCase()} на ${t.durationDays} дней)`).join(", ") + ".\n";
+    if (vpnTariffs.length > 0) tariffsContext += "Тарифы доступа: " + vpnTariffs.map(t => `${t.name} (${t.price} ${t.currency.toUpperCase()} на ${t.durationDays} дней)`).join(", ") + ".\n";
     if (proxyTariffs.length > 0) tariffsContext += "Прокси: " + proxyTariffs.map(t => `${t.name} (${t.price} ${t.currency.toUpperCase()} на ${t.durationDays} дней)`).join(", ") + ".\n";
     if (singboxTariffs.length > 0) tariffsContext += "Sing-box: " + singboxTariffs.map(t => `${t.name} (${t.price} ${t.currency.toUpperCase()} на ${t.durationDays} дней)`).join(", ") + ".\n";
 
@@ -7337,8 +7366,8 @@ clientRouter.post("/ai/chat", async (req, res) => {
     }
 
     const instructionsContext = `\n\nИНСТРУКЦИЯ ПО ПОДКЛЮЧЕНИЮ:
-Если пользователь спрашивает, как подключиться или настроить VPN, отвечай СТРОГО по следующему алгоритму (не придумывай свои методы):
-1. В личном кабинете на сайте нажать кнопку "Подключить VPN".
+Если пользователь спрашивает, как подключиться или настроить доступ, отвечай СТРОГО по следующему алгоритму (не придумывай свои методы):
+1. В личном кабинете на сайте нажать кнопку "Подключиться".
 2. Выбрать свою платформу и скачать предложенное приложение.
 3. Вернуться на сайт и нажать кнопку "Добавить подписку" (оная автоматически добавит конфигурацию в приложение) либо отсканировать QR-код.
 
@@ -7357,7 +7386,7 @@ clientRouter.post("/ai/chat", async (req, res) => {
       
       userInfoContext += `- Баланс: ${dbClient?.balance || 0} ${(dbClient?.preferredCurrency || 'usd').toUpperCase()}\n`;
 
-      let vpnInfo = "У пользователя НЕТ активной подписки VPN";
+      let vpnInfo = "У пользователя НЕТ активной подписки";
       if (client.remnawaveUuid) {
         const u = await remnaGetUser(client.remnawaveUuid);
         if (u && !u.error && u.data) {
@@ -7374,7 +7403,7 @@ clientRouter.post("/ai/chat", async (req, res) => {
           }
         }
       }
-      userInfoContext += `- VPN: ${vpnInfo}\n`;
+      userInfoContext += `- Подключение: ${vpnInfo}\n`;
       
       if (dbClient?.proxySlots?.length) {
         userInfoContext += `- Прокси: ${dbClient.proxySlots.map((s: any) => `${s.proxyTariff?.name || 'Слот'} (до ${s.expiresAt.toISOString().split('T')[0]})`).join(', ')}\n`;
@@ -7689,8 +7718,8 @@ publicConfigRouter.get("/config", async (req, res) => {
 publicConfigRouter.get("/manifest.webmanifest", async (_req, res) => {
   try {
     const cfg = (await getSystemConfig().catch(() => null)) as { serviceName?: string | null; serviceDescription?: string | null; favicon?: string | null } | null;
-    const brand = (cfg?.serviceName ?? "").trim() || "STEALTHNET";
-    const description = (cfg?.serviceDescription ?? "").trim() || `${brand} — личный кабинет и админка VPN`;
+    const brand = (cfg?.serviceName ?? "").trim() || "ALTETH";
+    const description = (cfg?.serviceDescription ?? "").trim() || "Интернет — каким он должен быть.";
     const favicon = (cfg?.favicon ?? "").trim() || null;
 
     const icons = favicon
@@ -7856,7 +7885,7 @@ publicConfigRouter.get("/subscription-page", async (_req, res) => {
     });
     if (!row?.value) return res.json(null);
     const parsed = JSON.parse(row.value) as unknown;
-    return res.json(parsed);
+    return res.json(migrateSubscriptionPageConfig(parsed));
   } catch {
     return res.json(null);
   }
@@ -8007,4 +8036,3 @@ publicConfigRouter.get("/singbox-tariffs", async (req, res) => {
     return res.status(500).json({ message: "Ошибка загрузки тарифов Sing-box" });
   }
 });
-

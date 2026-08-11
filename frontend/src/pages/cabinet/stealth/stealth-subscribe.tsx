@@ -375,7 +375,7 @@ export function StealthSubscribe() {
                             active && !isFeatured && "text-saccent-300/90",
                             !active && "text-zinc-500",
                           )}>
-                            {active ? "Выбрано" : isFeatured ? "VPN Client" : "Альтернативный клиент"}
+                            {active ? "Выбрано" : isFeatured ? "Рекомендуемый клиент" : "Альтернативный клиент"}
                           </div>
                         </div>
                       </div>

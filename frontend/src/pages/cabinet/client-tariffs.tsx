@@ -882,7 +882,7 @@ function ClassicTariffsPage() {
                   <Button
                     size="sm"
                     onClick={() => { setPayModal(null); setExtendDialogSubId(dupSub.id); }}
-                    className="gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0 hover:opacity-90"
+                    className="gap-1.5 rounded-xl bg-primary text-primary-foreground border-0 hover:bg-primary/90"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                     Продлить «{dupSub.label}»
@@ -930,7 +930,7 @@ function ClassicTariffsPage() {
                         <b className="text-violet-400">{formatRuDays(convPreview.totalDays ?? 0)}</b>.
                         Устройства и серверы останутся как есть.</>
                       ) : convPreview.mode === "replace" ? (
-                      <>Старая подписка{convPreview.subscription.tariffName ? <> «<b>{convPreview.subscription.tariffName}</b>»</> : " (текущая)"} удалится, остаток <b>{formatRuDays(convPreview.remainingDays ?? 0)}</b> сгорит. Создастся новая на выбранный тариф — <b className="text-violet-400">{formatRuDays(convPreview.purchasedDays ?? 0)}</b> с нуля (VPN-ссылка сохранится).</>
+                      <>Старая подписка{convPreview.subscription.tariffName ? <> «<b>{convPreview.subscription.tariffName}</b>»</> : " (текущая)"} удалится, остаток <b>{formatRuDays(convPreview.remainingDays ?? 0)}</b> сгорит. Создастся новая на выбранный тариф — <b className="text-violet-400">{formatRuDays(convPreview.purchasedDays ?? 0)}</b> с нуля (ссылка подключения сохранится).</>
                       ) : (
                       <>Покупка не создаст вторую подписку — она обновит
                       {convPreview.subscription.tariffName ? <> «<b>{convPreview.subscription.tariffName}</b>»</> : " текущую"}
@@ -1138,17 +1138,17 @@ function ClassicTariffsPage() {
                 size="lg"
                 onClick={() => payByBalance(tariff)}
                 disabled={payLoading || !hasBalance}
-                className={cn("w-full shadow-lg border-0 group relative overflow-hidden", isMobileOrMiniapp ? "justify-between px-6 h-16 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400" : "gap-2 h-14 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300")}
+                className={cn("w-full shadow-lg border-0 group relative overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90", isMobileOrMiniapp ? "justify-between px-6 h-16 rounded-2xl" : "gap-2 h-14 rounded-xl hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300")}
               >
                 {!isMobileOrMiniapp && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />}
                 
                 {isMobileOrMiniapp ? (
                   <>
                     <div className="flex items-center gap-3">
-                      {payLoading ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Wallet className="h-6 w-6 text-white" />}
-                      <span className="text-base font-bold text-white">{t("cabinet.tariffs.pay_balance")}</span>
+                      {payLoading ? <Loader2 className="h-6 w-6 text-primary-foreground animate-spin" /> : <Wallet className="h-6 w-6 text-primary-foreground" />}
+                      <span className="text-base font-bold text-primary-foreground">{t("cabinet.tariffs.pay_balance")}</span>
                     </div>
-                    <span className="text-white/80 font-mono font-medium bg-black/20 px-2 py-1 rounded-lg">
+                    <span className="text-primary-foreground/80 font-mono font-medium bg-black/20 px-2 py-1 rounded-lg">
                       {formatMoney(client.balance, tariff.currency)}
                     </span>
                   </>
@@ -1369,7 +1369,7 @@ function ClassicTariffsPage() {
                     </div>
                   </div>
                   <Button
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 shrink-0 gap-2"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 shrink-0 gap-2"
                     onClick={activateTrial}
                     disabled={trialLoading}
                   >
@@ -1667,6 +1667,7 @@ function UnifiedPurchaseModal({
   extendKeepDevices?: number;
   extendDeviceMonthlyPrice?: number;
 }) {
+  const isMobileOrMiniapp = useCabinetMiniapp();
   const [agree, setAgree] = useState(false);
   const tariff = modal?.tariff;
   // Сброс галочки согласия при открытии модалки под новый тариф.
@@ -1723,25 +1724,27 @@ function UnifiedPurchaseModal({
 
   return (
     <Dialog open={!!modal} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-background/85 backdrop-blur-3xl border-white/10 rounded-[2rem] sm:max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden">
-        <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-primary/30 via-fuchsia-500/15 to-purple-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-16 h-52 w-52 rounded-full bg-gradient-to-tr from-cyan-500/15 to-primary/15 blur-3xl pointer-events-none" />
-
+      <DialogContent className={cn(
+        "purchase-modal-glass purchase-modal-shell border-white/10 rounded-[1.75rem] sm:rounded-[2rem] w-[calc(100vw-1.5rem)] max-w-[370px] sm:max-w-lg overflow-hidden gap-3 p-4 pb-4 sm:p-5 sm:pb-5",
+        isMobileOrMiniapp
+          ? "top-[50%] max-h-none"
+          : "max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)]"
+      )}>
         <DialogHeader className="relative">
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ rotate: [0, -6, 6, 0] }}
               transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 4 }}
-              className="h-14 w-14 rounded-3xl bg-gradient-to-br from-primary/30 via-fuchsia-500/20 to-purple-500/30 border border-white/15 flex items-center justify-center shadow-xl shrink-0"
+              className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl sm:rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner shrink-0"
             >
-              <Package className="h-7 w-7 text-primary" />
+              <Package className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
             </motion.div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500">
+              <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
                 {tariff.name}
               </DialogTitle>
               {tariff.description && (
-                <DialogDescription className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-1 line-clamp-2">
                   {tariff.description}
                 </DialogDescription>
               )}
@@ -1749,7 +1752,7 @@ function UnifiedPurchaseModal({
           </div>
         </DialogHeader>
 
-        <div className="relative space-y-5 mt-2">
+        <div className="purchase-modal-body relative min-h-0 -mx-2 px-2 overflow-visible space-y-4 sm:space-y-5 mt-1 sm:mt-2 pb-1">
           {/* ── 1. Длительность ── */}
           {opts.length > 0 && (
             <section>
@@ -1757,8 +1760,8 @@ function UnifiedPurchaseModal({
                 <Calendar className="inline h-3 w-3 mr-1" /> Длительность
               </Label>
               <div className={cn(
-                "grid gap-2",
-                opts.length === 1 ? "grid-cols-1" : opts.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
+                "grid gap-x-1.5 gap-y-2 pt-1.5 sm:gap-x-2 sm:gap-y-2.5",
+                opts.length === 1 ? "grid-cols-1" : opts.length === 2 ? "grid-cols-2" : opts.length === 3 ? "grid-cols-3" : "grid-cols-4"
               )}>
                 {opts.map((opt) => {
                   const isActive = (selectedOpt?.id ?? opts[0]?.id) === opt.id;
@@ -1770,19 +1773,19 @@ function UnifiedPurchaseModal({
                       type="button"
                       onClick={() => setSelectedPriceOptionId(opt.id)}
                       className={cn(
-                        "relative overflow-hidden rounded-2xl border p-3 transition-all text-center",
-                        "hover:scale-[1.03] hover:shadow-lg",
+                        "relative flex min-h-[76px] flex-col items-center justify-center overflow-visible rounded-2xl border px-1.5 py-2 text-center transition-all sm:p-3",
+                        "hover:z-10 hover:scale-[1.03] hover:shadow-lg",
                         isActive
-                          ? "bg-gradient-to-br from-primary/25 via-fuchsia-500/10 to-purple-500/15 border-primary/50 ring-2 ring-primary/40 shadow-lg shadow-primary/20"
+                          ? "bg-primary/10 border-primary/50 ring-2 ring-primary/35 shadow-lg shadow-primary/15"
                           : "bg-foreground/[0.03] dark:bg-white/[0.02] border-white/10 hover:border-white/20"
                       )}
                     >
                       {isBest && (
-                        <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-black shadow">
+                        <span className="absolute -top-2 -right-2 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black leading-none text-primary-foreground shadow-lg shadow-primary/25">
                           ★
                         </span>
                       )}
-                      <p className={cn("text-sm font-bold", isActive && "text-primary")}>
+                      <p className={cn("text-[13px] font-bold leading-tight sm:text-sm", isActive && "text-primary")}>
                         {opt.durationDays} {formatRuDays(opt.durationDays).replace(/^\d+\s/, "")}
                       </p>
                       {/* T-unify-cabinet (30.05.2026, WolfVPN): полная стоимость подписки за период */}
@@ -1810,7 +1813,7 @@ function UnifiedPurchaseModal({
                   В тарифе: <strong className="text-foreground">{includedDevices}</strong>
                 </span>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 min-[380px]:grid-cols-4 gap-x-2 gap-y-2.5 pt-1.5">
                 {deviceTiles.map((tile) => {
                   const isActive = tile.extras === selectedExtraDevices;
                   const isBest = bestExtra?.extras === tile.extras && tile.extras > 0 && tile.pct === 0;
@@ -1821,30 +1824,30 @@ function UnifiedPurchaseModal({
                       onClick={() => setSelectedExtraDevices(tile.extras)}
                       whileTap={{ scale: 0.96 }}
                       className={cn(
-                        "relative overflow-hidden rounded-2xl border p-3 transition-all",
-                        "hover:scale-[1.04] hover:shadow-lg",
+                        "relative overflow-visible rounded-2xl border p-2.5 sm:p-3 transition-all",
+                        "hover:z-10 hover:scale-[1.04] hover:shadow-lg",
                         isActive
-                          ? "bg-gradient-to-br from-primary/25 via-fuchsia-500/15 to-purple-500/20 border-primary/50 ring-2 ring-primary/40 shadow-lg shadow-primary/20"
+                          ? "bg-primary/10 border-primary/50 ring-2 ring-primary/35 shadow-lg shadow-primary/15"
                           : tile.pct > 0
-                            ? "bg-gradient-to-br from-emerald-500/[0.06] to-cyan-500/[0.04] border-emerald-500/25 hover:border-emerald-500/40"
+                            ? "bg-primary/[0.06] border-primary/25 hover:border-primary/40"
                             : "bg-foreground/[0.03] dark:bg-white/[0.02] border-white/10 hover:border-white/20"
                       )}
                     >
                       {tile.pct > 0 && (
                         <div className={cn(
-                          "absolute -top-1 -right-1 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow z-10",
-                          isActive ? "bg-fuchsia-500 text-white" : "bg-emerald-500 text-white"
+                          "absolute -top-1 -right-2 z-20 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none shadow-lg",
+                          "bg-primary text-primary-foreground"
                         )}>
                           −{tile.pct}%
                         </div>
                       )}
                       {isBest && (
-                        <Sparkles className="absolute top-1.5 right-1.5 h-3 w-3 text-fuchsia-500" />
+                        <Sparkles className="absolute top-1.5 right-1.5 h-3 w-3 text-primary" />
                       )}
                       <div className="flex items-center justify-center gap-1 mb-1">
                         <Smartphone className={cn("h-3.5 w-3.5", isActive ? "text-primary" : "text-muted-foreground")} />
                         <span className={cn("text-sm font-bold", isActive && "text-primary")}>
-                          {tile.extras === 0 ? "Без доп." : `+${tile.extras}`}
+                          {tile.extras === 0 ? "0" : `+${tile.extras}`}
                         </span>
                       </div>
                       <p className="text-[11px] font-bold text-foreground/90 tabular-nums text-center">
@@ -1853,11 +1856,6 @@ function UnifiedPurchaseModal({
                       <p className="text-[9px] text-muted-foreground/80 text-center mt-0.5">
                         {tile.totalDevices} устр
                       </p>
-                      {isBest && (
-                        <p className="text-[9px] font-medium text-fuchsia-500 dark:text-fuchsia-400 text-center mt-0.5">
-                          выгоднее всего
-                        </p>
-                      )}
                     </motion.button>
                   );
                 })}
@@ -1865,85 +1863,85 @@ function UnifiedPurchaseModal({
             </section>
           )}
 
-          {/* ── 3. Итог ── */}
-          <section className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.08] via-fuchsia-500/[0.04] to-purple-500/[0.06] p-4">
-            <div className="flex items-baseline justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Длительность</span>
-              <span className="text-xs font-medium tabular-nums">
-                {selectedOpt?.durationDays ?? 0} {formatRuDays(selectedOpt?.durationDays ?? 0).replace(/^\d+\s/, "")}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Тариф ({includedDevices} устр)</span>
-              <span className="text-xs font-medium tabular-nums">
-                {formatMoney(unitPrice, tariff.currency)}
-              </span>
-            </div>
-            {extrasEnabled && selectedExtraDevices > 0 && (
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-xs text-muted-foreground">+{selectedExtraDevices} доп. устр</span>
-                <span className="text-xs font-medium tabular-nums">
-                  {formatMoney(pricePerExtra * (selectedDays / EXTRA_DEVICE_BASE_DAYS), tariff.currency)} × {selectedExtraDevices}
-                </span>
-              </div>
-            )}
-            {extendDevicesCost > 0 && (
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Сохранение {extendKeepDevices} доп. устр</span>
-                <span className="text-xs font-medium tabular-nums">+{formatMoney(extendDevicesCost, tariff.currency)}</span>
-              </div>
-            )}
-            {savedAmount > 0 && (
-              <div className="flex items-baseline justify-between mb-1 text-emerald-500 dark:text-emerald-400">
-                <span className="text-xs flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" /> Скидка {appliedPct}%
-                </span>
-                <span className="text-xs font-bold tabular-nums">
-                  −{formatMoney(savedAmount, tariff.currency)}
-                </span>
-              </div>
-            )}
-            <div className="border-t border-primary/20 mt-2 pt-2 flex items-baseline justify-between">
-              <span className="text-sm font-medium">К оплате</span>
-              <AnimatePresence mode="popLayout">
-                <motion.span
-                  key={finalTotal}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-fuchsia-500 tabular-nums"
-                >
-                  {formatMoney(finalTotal, tariff.currency)}
-                </motion.span>
-              </AnimatePresence>
-            </div>
-          </section>
         </div>
 
+        {/* ── 3. Итог ── */}
+        <section className="purchase-modal-summary rounded-2xl border border-primary/30 bg-primary/[0.07] p-3.5 sm:p-4">
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-xs text-muted-foreground">Длительность</span>
+            <span className="text-xs font-medium tabular-nums">
+              {selectedOpt?.durationDays ?? 0} {formatRuDays(selectedOpt?.durationDays ?? 0).replace(/^\d+\s/, "")}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-xs text-muted-foreground">Тариф ({includedDevices} устр)</span>
+            <span className="text-xs font-medium tabular-nums">
+              {formatMoney(unitPrice, tariff.currency)}
+            </span>
+          </div>
+          {extrasEnabled && selectedExtraDevices > 0 && (
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-xs text-muted-foreground">+{selectedExtraDevices} доп. устр</span>
+              <span className="text-xs font-medium tabular-nums">
+                {formatMoney(pricePerExtra * (selectedDays / EXTRA_DEVICE_BASE_DAYS), tariff.currency)} × {selectedExtraDevices}
+              </span>
+            </div>
+          )}
+          {extendDevicesCost > 0 && (
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Сохранение {extendKeepDevices} доп. устр</span>
+              <span className="text-xs font-medium tabular-nums">+{formatMoney(extendDevicesCost, tariff.currency)}</span>
+            </div>
+          )}
+          {savedAmount > 0 && (
+            <div className="flex items-baseline justify-between mb-1 text-primary">
+              <span className="text-xs flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Скидка {appliedPct}%
+              </span>
+              <span className="text-xs font-bold tabular-nums">
+                −{formatMoney(savedAmount, tariff.currency)}
+              </span>
+            </div>
+          )}
+          <div className="border-t border-primary/20 mt-2 pt-2 flex items-baseline justify-between">
+            <span className="text-sm font-medium">К оплате</span>
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={finalTotal}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="text-2xl font-black text-primary tabular-nums"
+              >
+                {formatMoney(finalTotal, tariff.currency)}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+        </section>
+
         {/* ── Согласие с документами (обязательно перед оплатой) ── */}
-        <div className="relative mt-4 flex items-start gap-2.5 rounded-2xl border border-white/10 bg-foreground/[0.03] dark:bg-white/[0.02] p-3.5">
+        <div className="purchase-modal-terms relative flex items-start gap-2.5 rounded-2xl border border-white/10 bg-foreground/[0.03] dark:bg-white/[0.02] p-3 sm:p-3.5">
           <Checkbox
             id="agree-pay"
             checked={agree}
             onCheckedChange={(v) => setAgree(v === true)}
-            className="mt-0.5 shrink-0 border-white/50 bg-white/10 data-[state=checked]:bg-fuchsia-500 data-[state=checked]:border-fuchsia-500 data-[state=checked]:text-white"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-primary/55 bg-background/90 text-primary-foreground shadow-sm shadow-primary/10 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
           />
           <Label htmlFor="agree-pay" className="text-xs font-normal leading-relaxed text-muted-foreground cursor-pointer">
             Нажимая кнопку «К оплате», я подтверждаю, что ознакомился и согласен с условиями{" "}
-            <Link to="/cabinet/documents/offer" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Публичной оферты</Link>,{" "}
-            <Link to="/cabinet/documents/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Политикой обработки персональных данных</Link>{" "}и{" "}
-            <Link to="/cabinet/documents/refund" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Политикой возврата</Link>.
+            <Link to="/cabinet/documents/offer" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Публичной оферты</Link>{" "}и{" "}
+            <Link to="/cabinet/documents/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Политикой обработки персональных данных</Link>.
           </Label>
         </div>
 
-        <DialogFooter className="relative mt-3 gap-2 sm:gap-2 flex-col sm:flex-row">
+        <DialogFooter className="purchase-modal-footer relative gap-2 sm:gap-2 flex-col sm:flex-row">
           <Button variant="outline" onClick={onClose} className="rounded-xl">
             Отмена
           </Button>
           <Button
             onClick={onConfirm}
             disabled={!selectedOpt || !agree}
-            className="rounded-xl gap-2 h-11 px-6 text-base font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 hover:from-primary/90 hover:via-fuchsia-500/90 hover:to-purple-500/90 shadow-lg shadow-primary/30"
+            className="rounded-xl gap-2 h-10 sm:h-11 px-5 sm:px-6 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30"
           >
             <CreditCard className="h-4 w-4" />
             К оплате

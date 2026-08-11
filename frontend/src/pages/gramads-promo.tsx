@@ -31,7 +31,7 @@ const CATEGORY_NAMES: Record<number, string> = {
   0: "Other", 1: "Crypto", 2: "Business/Marketing", 3: "Entertainment", 4: "Tech/IT",
   5: "News/Media", 6: "Sports", 7: "Betting", 8: "Gaming", 9: "Education",
   10: "Finance", 11: "Shops/Goods", 12: "Services", 13: "Art/Design",
-  14: "Health/Lifestyle", 15: "Adults", 17: "VPN/Proxy",
+  14: "Health/Lifestyle", 15: "Adults", 17: "Access/Proxy",
 };
 
 const MODERATION_LABEL: Record<number, string> = {
@@ -598,8 +598,8 @@ function CampaignCard({ post, onOpen, onAction }: {
 //  Диалог создания кампании 
 function CreateCampaignDialog({ open, onOpenChange, onCreated, token }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void; token: string }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("Привет!  Попробуй наш VPN — быстро, безопасно, без логов. Жми кнопку и получай скидку!");
-  const [buttonText, setButtonText] = useState(" Попробовать VPN");
+  const [text, setText] = useState("Привет! 🚀 Попробуй наш сервис — быстро, безопасно, без логов. Жми кнопку и получай скидку!");
+  const [buttonText, setButtonText] = useState("🔒 Попробовать");
   const [link, setLink] = useState("");
   const [limit, setLimit] = useState(1000);
   const [extraRate, setExtraRate] = useState(0);

@@ -243,7 +243,7 @@ const endpoints: Category[] = [
       {
         method: "GET",
         path: "/tariffs",
-        desc: "Каталог VPN-тарифов, сгруппированных по категориям.",
+        desc: "Каталог тарифов, сгруппированных по категориям.",
         auth: "API Key",
         res: `[
   {
@@ -285,7 +285,7 @@ const endpoints: Category[] = [
         desc: "Публичная конфигурация проекта (название, логотип, валюта, включённые платёжные методы, флаги функций и т.п.).",
         auth: "API Key",
         res: `{
-  "serviceName": "STEALTHNET",
+  "serviceName": "ALTETH",
   "cabinetDesign": "stealth",
   "multiSubscriptionsEnabled": true,
   "passwordResetEnabled": true,

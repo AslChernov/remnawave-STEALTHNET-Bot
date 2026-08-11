@@ -486,10 +486,10 @@ export const emailTemplatesApi = {
       method: "PUT",
       body: JSON.stringify({ subject, body }),
     }),
-  preview: (token: string, key: string, vars?: Record<string, string>) =>
+  preview: (token: string, key: string, vars?: Record<string, string>, subject?: string, body?: string) =>
     req<{ subject: string; body: string; vars: Record<string, string> }>(token, `/email-templates/${encodeURIComponent(key)}/preview`, {
       method: "POST",
-      body: JSON.stringify({ vars: vars ?? {} }),
+      body: JSON.stringify({ vars: vars ?? {}, subject, body }),
     }),
   sendTest: (token: string, key: string, toEmail: string, vars?: Record<string, string>) =>
     req<{ ok: boolean }>(token, `/email-templates/${encodeURIComponent(key)}/send-test`, {

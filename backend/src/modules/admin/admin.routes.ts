@@ -5767,7 +5767,7 @@ export const ADMIN_ALLOWED_SECTIONS = [
   "auto-broadcast",
   "contests",
   "tour-constructor",
-  "promo-vpn", // Продвижение VPN через Gramads
+  "promo-vpn", // Продвижение сервиса через Gramads
   "marketplace",
   // Settings
   "settings",
@@ -6434,7 +6434,7 @@ adminRouter.post("/gift-codes/create", asyncRoute(async (req, res) => {
           const tariff = await prisma.tariff.findUnique({ where: { id: tariffId }, select: { name: true } });
           const customMessage = giftMessage?.trim() ? `\n\n💬 «${giftMessage.trim()}»` : "";
           const text =
-            `🎁 Вам подарили подписку <b>${tariff?.name ?? "VPN"}</b>!\n\n` +
+            `🎁 Вам подарили подписку <b>${tariff?.name ?? "Доступ"}</b>!\n\n` +
             `Код активации: <code>${result.data.code}</code>${customMessage}\n\n` +
             `${giftUrl}`;
           const shareText = `У меня для тебя подарок 🎁\n \nПодписка на сервис безопасного удалённого доступа 🛡 \n\n💡 Нажми на ссылку, чтобы активировать:\n\n${giftUrl}`;
@@ -6623,7 +6623,7 @@ adminRouter.post("/tour-steps/seed-defaults", asyncRoute(async (_req, res) => {
       target: "body",
       targetLabel: "Приветствие",
       title: "Добро пожаловать! 👋",
-      content: "Привет! Это твой личный кабинет STEALTHNET. Давай я покажу, что тут есть! Тур автоматически переключит вкладки — просто нажимай «Дальше».",
+      content: "Привет! Это твой личный кабинет ALTETH. Давай я покажу, что тут есть! Тур автоматически переключит вкладки — просто нажимай «Дальше».",
       placement: "center",
       route: null,
       mascotId: builtIn?.id ?? null,
@@ -6634,7 +6634,7 @@ adminRouter.post("/tour-steps/seed-defaults", asyncRoute(async (_req, res) => {
       target: '[data-tour="subscription"]',
       targetLabel: "Подписка",
       title: "Твоя подписка 🔑",
-      content: "Здесь ты видишь статус своей VPN-подписки, оставшиеся дни и трафик.",
+      content: "Здесь ты видишь статус своей подписки, оставшиеся дни и трафик.",
       placement: "bottom",
       route: "/cabinet/dashboard",
       mascotId: builtIn?.id ?? null,
@@ -6821,7 +6821,7 @@ adminRouter.post("/tour-steps/seed-defaults", asyncRoute(async (_req, res) => {
       target: "body",
       targetLabel: "Завершение",
       title: "Всё готово! 🎉",
-      content: "Теперь ты знаешь все разделы кабинета. Удачного использования STEALTHNET! Если забудешь — тур можно перезапустить в профиле.",
+      content: "Теперь ты знаешь все разделы кабинета. Удачного использования ALTETH! Если забудешь — тур можно перезапустить в профиле.",
       placement: "center",
       route: null,
       mascotId: builtIn?.id ?? null,

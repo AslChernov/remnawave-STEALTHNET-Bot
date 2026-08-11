@@ -17,9 +17,9 @@ import { getSystemConfig } from "../client/client.service.js";
 
 const DIST_PATH = process.env.FRONTEND_DIST_PATH || "/var/www/stealthnet";
 const INDEX_FILE = path.join(DIST_PATH, "index.html");
-const DEFAULT_BRAND = "STEALTHNET";
-const DEFAULT_DESC = "STEALTHNET — личный кабинет и админка VPN на базе Remnawave";
-const BRAND_PLACEHOLDERS = [DEFAULT_BRAND, "VPN Service"];
+const DEFAULT_BRAND = "ALTETH";
+const DEFAULT_DESC = "Интернет — каким он должен быть.";
+const BRAND_PLACEHOLDERS = [DEFAULT_BRAND, "STEALTHNET", "VPN Service"];
 
 interface CachedTemplate {
   raw: string;
@@ -68,7 +68,7 @@ async function resolveBrand(): Promise<BrandValues> {
   const description = customDescription ? customDescription :
     brand === DEFAULT_BRAND
       ? DEFAULT_DESC
-      : `${brand} — личный кабинет и админка VPN на базе Remnawave`;
+      : `${brand} — доступ к зарубежным сервисам`;
   const logo = (cfg?.logo ?? "").trim() || null;
   brandCache = {
     at: Date.now(),

@@ -23,6 +23,7 @@ import {
   extractRemnaUuid,
   isRemnaConfigured,
   remnaDeleteUser,
+  remnaEncryptHappLink,
 } from "../remna/remna.client.js";
 import { getSystemConfig } from "../client/client.service.js";
 import { getNextSubscriptionIndex } from "../subscription/subscription.helpers.js";
@@ -265,12 +266,12 @@ export async function createAdditionalSubscription(
     }
 
     console.error("[gift] Remna createUser failed for secondary:", createRes.error, createRes.status);
-    return { ok: false, error: "Ошибка создания VPN-пользователя", status: 502 };
+    return { ok: false, error: "Ошибка создания пользователя Remna", status: 502 };
   }
 
   if (!remnaUuid) {
     console.error(`[gift] Failed to create Remnawave user after ${MAX_ATTEMPTS} attempts for root ${rootClientId}`);
-    return { ok: false, error: "Ошибка создания VPN-пользователя (все имена заняты)", status: 502 };
+    return { ok: false, error: "Ошибка создания пользователя Remna (все имена заняты)", status: 502 };
   }
 
   // если в админке включён toggle «Автопродление подписки»
@@ -853,6 +854,10 @@ export async function redeemGiftCode(
         ?? (r.data as { response?: Record<string, unknown>; data?: Record<string, unknown> } | null)?.data
         ?? (r.data as Record<string, unknown> | null);
       subscriptionUrl = (inner as { subscriptionUrl?: string } | null)?.subscriptionUrl ?? null;
+      const cfg = await getSystemConfig();
+      if (cfg.happCryptEnabled && subscriptionUrl) {
+        subscriptionUrl = await remnaEncryptHappLink(subscriptionUrl) ?? subscriptionUrl;
+      }
     } catch { /* ignore */ }
   }
 
@@ -1025,7 +1030,7 @@ export async function getSubscriptionUrl(
     return { ok: false, error: "Подписка зарезервирована как подарок", status: 400 };
   }
   if (!sub.remnawaveUuid) {
-    return { ok: false, error: "VPN-пользователь не создан", status: 400 };
+    return { ok: false, error: "Пользователь Remna не создан", status: 400 };
   }
 
   return { ok: true, data: { uuid: sub.remnawaveUuid } };
