@@ -652,11 +652,8 @@ export async function remnaEncryptHappLink(linkToEncrypt: string): Promise<strin
   if (!trimmed) return null;
   if (/^happ:\/\/crypt\d+\//i.test(trimmed)) return trimmed;
 
-  // В Remnawave 3.x ручки /api/system/tools/happ/encrypt больше нет —
-  // без этой проверки каждый вызов уходил бы в 404. Ссылка вернётся
-  // как есть (уже зашифровано либо шифрование недоступно).
-  const { getRemnaCapabilities } = await import("./remna-capabilities.js");
-  if (!(await getRemnaCapabilities()).happCrypt) return null;
+  // Шифрование выполняет внешний Happ API, поэтому оно не зависит от версии
+  // Remnawave и продолжает работать в 3.x, где встроенную ручку удалили.
 
   const cached = _happCryptCache.get(trimmed);
   if (cached && Date.now() - cached.ts < HAPP_CRYPT_TTL_MS) {

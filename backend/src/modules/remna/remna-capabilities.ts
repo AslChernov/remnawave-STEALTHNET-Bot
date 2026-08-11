@@ -23,7 +23,7 @@ export interface RemnaCapabilities {
   major: 2 | 3 | null;
   /** /api/ip-control/* — гео-карта клиентов, сброс соединений. Вырезан в 3.x. */
   ipControl: boolean;
-  /** /api/system/tools/happ/encrypt — ссылки happ://. Вырезан в 3.x. */
+  /** Happ Crypto через внешний API crypto.happ.su; доступность не зависит от Remnawave. */
   happCrypt: boolean;
   /** /api/bandwidth-stats/nodes/realtime. Вырезан в 3.x. */
   realtimeBandwidth: boolean;
@@ -37,7 +37,7 @@ function fromMajor(major: 2 | 3 | null): RemnaCapabilities {
   return {
     major,
     ipControl: !gone,
-    happCrypt: !gone,
+    happCrypt: true,
     realtimeBandwidth: !gone,
   };
 }
