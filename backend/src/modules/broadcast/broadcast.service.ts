@@ -1014,6 +1014,11 @@ export async function startBroadcastJob(options: {
  * 25.05.2026, WolfVPN — статус ТЕПЕРЬ читается из DB, а не из in-memory map
  * (рассылка теперь в отдельном worker-процессе, in-memory map api не виден).
  */
+/** терминальный статус — работа окончена, итог больше не изменится */
+function isTerminalBroadcastStatus(status: string): boolean {
+  return status === "completed" || status === "cancelled" || status === "error";
+}
+
 export async function getBroadcastJob(jobId: string): Promise<BroadcastJob | null> {
   const row = await prisma.broadcastHistory.findUnique({ where: { id: jobId } });
   if (!row) return null;
@@ -1031,6 +1036,23 @@ export async function getBroadcastJob(jobId: string): Promise<BroadcastJob | nul
       failedTelegram: row.failedTelegram,
       failedEmail: row.failedEmail,
     },
+    // Итог отдаём, когда статус терминальный. При переезде задач из памяти в БД
+    // это поле перестали заполнять, а фронт ждёт именно его: условие выхода из
+    // опроса — `status === "completed" && result`. Без result опрос крутился до
+    // 30-минутного дедлайна по запросу каждые 1.5 с — ~1200 запросов на одну
+    // рассылку при общем лимите 1500/15 мин. Пара рассылок клала всю админку в
+    // 429, вплоть до невозможности войти.
+    result: isTerminalBroadcastStatus(row.status)
+      ? {
+          ok: row.status === "completed",
+          sentTelegram: row.sentTelegram,
+          sentEmail: row.sentEmail,
+          failedTelegram: row.failedTelegram,
+          failedEmail: row.failedEmail,
+          errors: Array.isArray(row.errors) ? (row.errors as string[]) : [],
+          ...(row.status === "cancelled" ? { cancelled: true } : {}),
+        }
+      : undefined,
     cancelRequested: row.cancelRequested,
   };
 }
