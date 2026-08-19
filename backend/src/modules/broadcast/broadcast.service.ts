@@ -136,9 +136,23 @@ export async function sendDirectEmail(to: string, subject: string | undefined, m
   return send.ok ? { ok: true } : { ok: false, error: send.error };
 }
 
+// Telegram sendPhoto принимает только растровые форматы. SVG, HEIC/HEIF, TIFF и
+// иконки он отвергает с «Bad Request: IMAGE_PROCESS_FAILED», причём на КАЖДОГО
+// получателя — рассылка уходит в ноль отправленных и выглядит как «ничего не
+// работает». Такие вложения шлём документом: картинкой в ленте не станет, зато
+// дойдёт до человека. mime может нести параметры («image/svg+xml; charset=…»),
+// поэтому сверяем только тип до точки с запятой.
+const TELEGRAM_NON_PHOTO_IMAGE =
+  /^image\/(svg\+xml|svg|heic|heif|heic-sequence|heif-sequence|tiff|x-tiff|x-icon|vnd\.microsoft\.icon)$/i;
+
+function isTelegramPhoto(mimetype: string | undefined): boolean {
+  if (!mimetype?.startsWith("image/")) return false;
+  return !TELEGRAM_NON_PHOTO_IMAGE.test(mimetype.split(";")[0].trim());
+}
+
 // Одноразовая подготовка media-параметров (тип + probe видео + thumbnail) перед отправкой.
 function prepareMedia(att: BroadcastAttachment | undefined) {
-  const isImage = att?.mimetype?.startsWith("image/") ?? false;
+  const isImage = isTelegramPhoto(att?.mimetype);
   const isVideo = att?.mimetype?.startsWith("video/") ?? false;
   const videoMeta = isVideo && att ? probeVideoMetaSync(att.buffer, att.originalname) : {};
   const videoThumb = isVideo && att ? generateVideoThumbnail(att.buffer, att.originalname) : null;
@@ -669,7 +683,7 @@ export async function runBroadcast(options: {
   const config = await getSystemConfig();
   const doTelegram = channel === "telegram" || channel === "both";
   const doEmail = channel === "email" || channel === "both";
-  const isImage = attachment?.mimetype?.startsWith("image/") ?? false;
+  const isImage = isTelegramPhoto(attachment?.mimetype);
   // 25.05.2026, WolfVPN — добавили ветку video/* → sendVideo (нативный плеер
   // с превью в Telegram, в отличие от sendDocument где видео — просто файл).
   const isVideo = attachment?.mimetype?.startsWith("video/") ?? false;
