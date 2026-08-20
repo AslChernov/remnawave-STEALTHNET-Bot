@@ -289,6 +289,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonConfig[] = [
   { id: "cabinet", visible: true, label: "🌐 Web Кабинет", order: 6, style: "primary", emojiKey: "SERVERS" },
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary", emojiKey: "NOTE" },
   { id: "support", visible: true, label: "🆘 Поддержка", order: 7, style: "primary", emojiKey: "NOTE" },
+  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "primary", emojiKey: "DOCUMENTS" },
   { id: "promocode", visible: true, label: "🎟️ Промокод", order: 8, style: "primary", emojiKey: "STAR" },
   { id: "extra_options", visible: true, label: "➕ Доп. опции", order: 9, style: "primary", emojiKey: "PACKAGE" },
   // Кастомные кнопки. Раньше добавлялись автоматом в keyboard.ts —
@@ -506,7 +507,10 @@ function parseBotButtons(raw: string | undefined): BotButtonConfig[] {
     const savedIds = new Set(result.map((b) => b.id));
     for (const def of DEFAULT_BOT_BUTTONS) {
       if (!savedIds.has(def.id)) {
-        result.push({ id: def.id, visible: def.visible, label: def.label, order: def.order, style: def.style ?? "", emojiKey: undefined, onePerRow: def.onePerRow });
+        const order = def.id === "docs"
+          ? (result.find((b) => b.id === "support")?.order ?? def.order) + 0.1
+          : def.order;
+        result.push({ id: def.id, visible: def.visible, label: def.label, order, style: def.style ?? "", emojiKey: undefined, onePerRow: def.onePerRow });
       }
     }
     return result;
