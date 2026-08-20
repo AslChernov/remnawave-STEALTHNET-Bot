@@ -212,6 +212,19 @@ export function mainMenu(opts: {
   if (fromConfig && !list.some((b) => b.id === "devices")) {
     list.push({ id: "devices", visible: true, label: "📱 Устройства", order: 1.5, style: "primary" });
   }
+  // Существующие установки хранят собственный bot_buttons без новой кнопки.
+  // Добавляем «Документы» на уровне runtime сразу после фактической позиции
+  // «Поддержки», чтобы перенос применился без ручного сброса настроек меню.
+  if (fromConfig && !list.some((b) => b.id === "docs")) {
+    const support = list.find((b) => b.id === "support");
+    list.push({
+      id: "docs",
+      visible: true,
+      label: "📄 Документы",
+      order: (support?.order ?? 7) + 0.1,
+      style: support?.style ?? "primary",
+    });
+  }
   // Auto-add «Мои подписки» если её нет в админ-конфиге (новая кнопка,
   // в существующих инсталляциях её ещё не было — fallback не даёт её потерять).
   if (fromConfig && !list.some((b) => b.id === "my_subs")) {
