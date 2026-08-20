@@ -510,7 +510,15 @@ function parseBotButtons(raw: string | undefined): BotButtonConfig[] {
         const order = def.id === "docs"
           ? (result.find((b) => b.id === "support")?.order ?? def.order) + 0.1
           : def.order;
-        result.push({ id: def.id, visible: def.visible, label: def.label, order, style: def.style ?? "", emojiKey: undefined, onePerRow: def.onePerRow });
+        result.push({
+          id: def.id,
+          visible: def.visible,
+          label: def.label,
+          order,
+          style: def.style ?? "",
+          emojiKey: def.id === "docs" ? def.emojiKey : undefined,
+          onePerRow: def.onePerRow,
+        });
       }
     }
     return result;

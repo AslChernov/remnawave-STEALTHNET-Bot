@@ -197,6 +197,8 @@ export function mainMenu(opts: {
   appUrl: string | null;
   botButtons?: BotButtonConfig[] | null;
   botBackLabel?: string | null;
+  /** Эмодзи из публичного конфига; нужны для runtime-кнопок старых установок. */
+  botEmojis?: BotEmojiMap | null;
   hasSupportLinks?: boolean;
   showTickets?: boolean;
   showExtraOptions?: boolean;
@@ -217,13 +219,28 @@ export function mainMenu(opts: {
   // «Поддержки», чтобы перенос применился без ручного сброса настроек меню.
   if (fromConfig && !list.some((b) => b.id === "docs")) {
     const support = list.find((b) => b.id === "support");
+    const documentsLabel = labelWithEmojiKey(opts.botEmojis, "DOCUMENTS", "📄", "Документы");
     list.push({
       id: "docs",
       visible: true,
-      label: "📄 Документы",
+      label: documentsLabel.text,
       order: (support?.order ?? 7) + 0.1,
       style: support?.style ?? "primary",
+      iconCustomEmojiId: documentsLabel.iconCustomEmojiId,
     });
+  }
+  // Если API уже вернул кнопку, но без premium ID (например, она была
+  // автоматически добавлена к старому bot_buttons), восстанавливаем иконку
+  // из единого ключа DOCUMENTS, не меняя пользовательское название кнопки.
+  const documentsIndex = list.findIndex((b) => b.id === "docs");
+  if (documentsIndex >= 0 && !list[documentsIndex]?.iconCustomEmojiId) {
+    const documents = list[documentsIndex]!;
+    const documentsLabel = labelWithEmojiKey(opts.botEmojis, "DOCUMENTS", "📄", documents.label);
+    list[documentsIndex] = {
+      ...documents,
+      label: documentsLabel.text,
+      iconCustomEmojiId: documentsLabel.iconCustomEmojiId,
+    };
   }
   // Auto-add «Мои подписки» если её нет в админ-конфиге (новая кнопка,
   // в существующих инсталляциях её ещё не было — fallback не даёт её потерять).
