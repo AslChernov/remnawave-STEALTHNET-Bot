@@ -110,6 +110,7 @@ const MENU_IDS: Record<string, string> = {
   trial: "menu:trial",
   vpn: "menu:vpn",
   support: "menu:support",
+  docs: "menu:docs",
   promocode: "menu:promocode",
   extra_options: "menu:extra_options",
   gift: "menu:gift",
@@ -138,6 +139,7 @@ const DEFAULT_BUTTONS: BotButtonConfig[] = [
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary" },
   // T11 (11.05.2026): «🆘 Поддержка» → «⭕ Помощь» по эталону скрина 1.
   { id: "support", visible: true, label: "⭕ Помощь", order: 7, style: "primary" },
+  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "primary" },
   { id: "promocode", visible: true, label: "🎟️ Промокод", order: 8, style: "primary" },
   { id: "gift", visible: true, label: "🎁 Подарки", order: 8.5, style: "primary" },
   { id: "extra_options", visible: true, label: "➕ Доп. опции", order: 9, style: "primary" },
@@ -195,6 +197,19 @@ export function mainMenu(opts: {
   if (fromConfig && !list.some((b) => b.id === "devices")) {
     list.push({ id: "devices", visible: true, label: "📱 Устройства", order: 1.5, style: "primary" });
   }
+  // Старые установки хранят собственный bot_buttons без новой кнопки.
+  // Добавляем «Документы» сразу после фактической позиции «Поддержки».
+  if (fromConfig && !list.some((b) => b.id === "docs")) {
+    const support = list.find((b) => b.id === "support");
+    list.push({
+      id: "docs",
+      visible: true,
+      label: "📄 Документы",
+      order: (support?.order ?? 7) + 0.1,
+      style: support?.style ?? "primary",
+      onePerRow: support?.onePerRow,
+    });
+  }
   // Auto-add «Мои подписки» если её нет в админ-конфиге (новая кнопка,
   // в существующих инсталляциях её ещё не было — fallback не даёт её потерять).
   if (fromConfig && !list.some((b) => b.id === "my_subs")) {
@@ -223,6 +238,7 @@ export function mainMenu(opts: {
       if (b.id === "cabinet") return !!opts.appUrl?.trim();
       if (b.id === "tickets") return opts.showTickets === true && !!opts.appUrl?.trim();
       if (b.id === "support") return !!opts.hasSupportLinks;
+      if (b.id === "docs") return !!opts.hasSupportLinks;
       if (b.id === "extra_options") return opts.showExtraOptions === true;
       if (b.id === "gift") return opts.showGift === true;
       return true;
@@ -299,8 +315,8 @@ const DEFAULT_BACK_LABEL = "🏠 Главное меню";
  * T11 (11.05.2026) — двухуровневое меню Помощи по эталону скринов 15/16.
  * Скрин 15 (главный экран Помощи) — короткие кнопки:
  *   - 🧑‍💼 Написать в поддержку (URL → supportLink)
- *   - 📄 Документы (callback → menu:docs)
  *   - 🏠 Главное меню
+ * Кнопка «Документы» перенесена в главное меню сразу после «Поддержки».
  */
 export function helpMainMenu(
   links: { support?: string | null },
@@ -314,7 +330,6 @@ export function helpMainMenu(
   const rows: (InlineButton | UrlButton)[][] = [];
   const support = (links.support ?? "").trim();
   if (support) rows.push([{ text: "🧑‍💼 Написать в поддержку", url: support }]);
-  rows.push([btn("📄 Документы", "menu:docs", undefined, undefined)]);
   rows.push([btn(back, "menu:main", backSty, emojiIds?.back)]);
   return { inline_keyboard: rows };
 }
