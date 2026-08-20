@@ -100,7 +100,7 @@ export const MANAGER_SECTIONS: { key: string; label: string; category: ManagerSe
   { key: "auto-broadcast", label: "Авто-рассылка", category: "tools" },
   { key: "contests", label: "Конкурсы", category: "tools" },
   { key: "tour-constructor", label: "Конструктор тура", category: "tools" },
-  { key: "promo-vpn", label: "Promo VPN", category: "tools" },
+  { key: "promo-vpn", label: "Promo Service", category: "tools" },
   { key: "marketplace", label: "Маркетплейс", category: "tools" },
   // Настройки
   { key: "settings", label: "Настройки", category: "settings" },
@@ -2693,7 +2693,7 @@ export const api = {
     return res.text();
   },
 
-  // ═══════════ Gramads: "Продвижение VPN" (прокси к https://api.gramads.net) ═══════════
+  // ═══════════ Gramads: "Продвижение сервиса" (прокси к https://api.gramads.net) ═══════════
   /** Статус подключения (валиден ли сохранённый API-ключ) */
   async gramadsStatus(token: string): Promise<{ configured: boolean; valid: boolean; balance?: GramadsBalanceDto; error?: string }> {
     return request("/admin/gramads/status", { token });
@@ -3475,7 +3475,7 @@ export interface ClientRecord {
   _count?: { referrals: number };
   /** Активная нода Remna (если есть) */
   activeNode?: string | null;
-  /** Время последнего подключения к VPN (ISO timestamp) */
+  /** Время последнего подключения (ISO timestamp) */
   onlineAt?: string | null;
   /** реферер клиента (кто привёл). Только в детальной карточке. */
   referrerId?: string | null;
@@ -3813,9 +3813,9 @@ export interface AdminSettings {
   emailPatternBlocklist?: string;
   /** Макс. регистраций с одного IP в час */
   signupMaxPerIpPerHour?: number;
-  /** Шифровать subscriptionUrl в happ://crypt4/... (длинная ссылка, по умолчанию выкл) */
+  /** Шифровать subscriptionUrl в happ://crypt5/... через Happ API (по умолчанию вкл) */
   happCryptEnabled?: boolean;
-  /** Кнопка VPN в боте ведёт на страницу подписки Remna */
+  /** Кнопка подключения в боте ведёт на страницу подписки Remna */
   useRemnaSubscriptionPage?: boolean;
   /** AI-чат в кабинете включён */
   aiChatEnabled?: boolean;

@@ -192,7 +192,7 @@ function countMissingFromDefault(
  * Раскрывающаяся карточка через нативный <details>, без extra-зависимостей.
  */
 const EXAMPLE_APP_JSON = `{
-  "name": "MyVPN",
+  "name": "MyApp",
   "featured": true,
   "blocks": [
     {
@@ -395,9 +395,8 @@ function HowToAddAppGuide() {
                   <span className="text-muted-foreground">— ссылка подписки клиента (с happ-шифрованием, если включено)</span>
                 </div>
                 <div>
-                  <code className="text-xs bg-muted/50 rounded px-1">{`{{HAPP_CRYPT4_LINK}}`}</code>,{" "}
-                  <code className="text-xs bg-muted/50 rounded px-1">{`{{HAPP_CRYPT3_LINK}}`}</code>{" "}
-                  <span className="text-muted-foreground">— то же самое (для совместимости с Remna sub-page)</span>
+                  <code className="text-xs bg-muted/50 rounded px-1">{`{{HAPP_CRYPT5_LINK}}`}</code>{" "}
+                  <span className="text-muted-foreground">— то же самое (для Happ Crypto Link)</span>
                 </div>
                 <div>
                   <code className="text-xs bg-muted/50 rounded px-1">{`{{USERNAME}}`}</code>{" "}

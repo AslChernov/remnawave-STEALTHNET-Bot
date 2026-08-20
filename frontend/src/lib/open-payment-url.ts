@@ -20,15 +20,28 @@
 
 type TelegramWebAppMinimal = {
   initData?: string;
-  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  openLink?: (url: string, options?: { try_instant_view?: boolean; try_browser?: string }) => void;
 };
+
+function hasTelegramBridge(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as Window & {
+    TelegramWebviewProxy?: { postEvent?: (eventType: string, eventData: string) => void };
+    external?: { notify?: (message: string) => void };
+  };
+  return (
+    typeof w.TelegramWebviewProxy?.postEvent === "function" ||
+    typeof w.external?.notify === "function" ||
+    window.parent !== window
+  );
+}
 
 /**
  * Возвращает `WebApp` ТОЛЬКО если пользователь действительно запущен из Telegram
  * как Mini App. `telegram-web-app.js` инжектит `window.Telegram.WebApp` на любой
  * странице (в т.ч. в обычной Safari), поэтому наличия объекта недостаточно.
- * Надёжный признак Mini App — непустой `initData`, который Telegram заполняет
- * только при реальном запуске WebApp.
+ * Надёжный признак для открытия ссылки — наличие реального Telegram bridge:
+ * без него `openLink` из локального `telegram-web-app.js` может стать no-op.
  */
 function getTelegramWebApp(): TelegramWebAppMinimal | null {
   if (typeof window === "undefined") return null;
@@ -38,7 +51,7 @@ function getTelegramWebApp(): TelegramWebAppMinimal | null {
   if (!raw || typeof raw !== "object") return null;
   const webApp = raw as TelegramWebAppMinimal;
   if (typeof webApp.openLink !== "function") return null;
-  if (!webApp.initData || !webApp.initData.trim()) return null;
+  if (!hasTelegramBridge()) return null;
   return webApp;
 }
 
@@ -69,7 +82,7 @@ export function preparePaymentRedirect(): PaymentRedirect {
     return {
       open: (url) => {
         try {
-          webApp.openLink!(url);
+          webApp.openLink!(url, { try_instant_view: false });
         } catch {
           window.location.assign(url);
         }

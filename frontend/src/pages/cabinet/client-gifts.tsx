@@ -385,7 +385,7 @@ export function ClientGiftsPage() {
               <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-foreground">Подарки</h1>
             </div>
             <p className="text-[16px] text-muted-foreground max-w-xl leading-relaxed">
-              Покупайте подписки VPN для друзей или активируйте вторую подписку для себя
+              Покупайте подписки для друзей или активируйте вторую подписку для себя
             </p>
           </div>
           <div className="flex flex-col items-start sm:items-end gap-3 shrink-0 sm:min-w-[240px]">
@@ -712,7 +712,7 @@ export function ClientGiftsPage() {
                       </Button>
                       <Button 
                         variant="secondary" 
-                        className="rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 font-semibold border-none shadow-none w-full gap-2"
+                        className="rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-semibold border-none shadow-none w-full gap-2"
                         onClick={() => handleActivateForSelf(sub.id)}
                         disabled={actionLoading === `activate-${sub.id}`}
                       >
@@ -1094,7 +1094,7 @@ export function ClientGiftsPage() {
                   <Button
                     onClick={handleBuy}
                     disabled={buyLoading || (client?.balance ?? 0) < total}
-                    className="rounded-xl gap-2 h-11 px-6 text-base font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 hover:from-primary/90 hover:via-fuchsia-500/90 hover:to-purple-500/90 shadow-lg shadow-primary/30"
+                    className="rounded-xl gap-2 h-11 px-6 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30"
                   >
                     {buyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="h-4 w-4" />}
                     {(client?.balance ?? 0) < total ? "Недостаточно средств" : `Купить за ${formatMoney(total, currency)}`}

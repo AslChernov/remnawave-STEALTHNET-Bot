@@ -325,7 +325,7 @@ export function StealthTariffs() {
       if (willReplace) {
         const subName = prev!.subscription?.tariffName ? `«${prev!.subscription.tariffName}»` : "текущую подписку";
         const bodyMain = prev!.mode === "replace"
-          ? `Старая подписка удалится, остаток ${prev!.remainingDays ?? 0} дн. сгорит — создастся новая на выбранный тариф (${prev!.purchasedDays ?? 0} дн. с нуля). VPN-ссылка сохранится.`
+          ? `Старая подписка удалится, остаток ${prev!.remainingDays ?? 0} дн. сгорит — создастся новая на выбранный тариф (${prev!.purchasedDays ?? 0} дн. с нуля). Ссылка подключения сохранится.`
           : prev!.mode === "extend"
             ? `Этот тариф у вас уже есть — он будет продлён.`
             : `Текущая подписка будет переведена на новый тариф. Остаток ${prev!.remainingDays ?? 0} дн. пересчитается в ${prev!.convertedDays ?? 0} дн. по цене нового тарифа.`;
@@ -714,7 +714,7 @@ export function StealthTariffs() {
                 {convPreview.mode === "extend"
                   ? `Вторая подписка не создастся — дни сложатся: остаток ${convPreview.remainingDays ?? 0} дн. + покупка ${convPreview.purchasedDays ?? 0} дн. = ${convPreview.totalDays ?? 0} дн. Устройства и серверы останутся как есть.`
                   : convPreview.mode === "replace"
-                  ? `Старая подписка${convPreview.subscription.tariffName ? ` «${convPreview.subscription.tariffName}»` : ""} удалится, остаток ${convPreview.remainingDays ?? 0} дн. сгорит. Создастся новая на выбранный тариф — ${convPreview.purchasedDays ?? 0} дн. с нуля (VPN-ссылка сохранится).`
+                  ? `Старая подписка${convPreview.subscription.tariffName ? ` «${convPreview.subscription.tariffName}»` : ""} удалится, остаток ${convPreview.remainingDays ?? 0} дн. сгорит. Создастся новая на выбранный тариф — ${convPreview.purchasedDays ?? 0} дн. с нуля (ссылка подключения сохранится).`
                   : <>Покупка не создаст вторую подписку — она обновит
                 {convPreview.subscription.tariffName ? ` «${convPreview.subscription.tariffName}»` : " текущую"} до нового тарифа.
                 {(convPreview.convertedDays ?? 0) > 0 && (convPreview.remainingDays ?? 0) > 0 && !(convPreview.extras && convPreview.extras.extraDevices > 0)

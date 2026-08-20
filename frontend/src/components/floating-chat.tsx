@@ -45,7 +45,7 @@ function getInitialAiMessage(serviceName: string): Message[] {
   return [
     {
       id: "a1",
-      text: `Привет! Я AI-ассистент ${name} ✨ Готов помочь с настройкой VPN, тарифами и любыми другими вопросами. Что вас интересует?`,
+      text: `Привет! Я AI-ассистент ${name} ✨ Готов помочь с настройкой подключения, тарифами и любыми другими вопросами. Что вас интересует?`,
       from: "bot",
       time: "10:00",
     },
@@ -674,7 +674,8 @@ export function FloatingChat() {
   useEffect(() => {
     function checkDialogs() {
       const overlay = document.querySelector("[data-radix-dialog-overlay]");
-      setHasOpenDialog(!!overlay);
+      const openDialog = document.querySelector('[role="dialog"][data-state="open"]');
+      setHasOpenDialog(!!overlay || !!openDialog);
     }
     const observer = new MutationObserver(checkDialogs);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });

@@ -394,7 +394,7 @@ export function DashboardLayout() {
                       marketing: "Маркетинг", "referral-network": "Реф. сеть", referrals: "Рефералка",
                       "secondary-subscriptions": "Подписки", "video-instructions": "Видео",
                       broadcast: "Рассылки", "auto-broadcast": "Авто-рассылки", contests: "Конкурсы",
-                      "tour-constructor": "Тур", "promo-vpn": "Продвижение VPN", marketplace: "Маркетплейс",
+                      "tour-constructor": "Тур", "promo-vpn": "Продвижение сервиса", marketplace: "Маркетплейс",
                       settings: "Настройки",
                       languages: "Языки", admins: "Менеджеры", "api-keys": "API ключи",
                       antibot: "Антибот", diagnostics: "Диагностика", "email-templates": "Email-шаблоны",

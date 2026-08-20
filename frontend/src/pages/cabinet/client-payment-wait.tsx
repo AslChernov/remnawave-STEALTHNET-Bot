@@ -121,7 +121,7 @@ export function ClientPaymentWaitPage() {
                 </p>
 
                 {providerUrl && (
-                  <Button asChild size="lg" className="mt-6 h-13 w-full rounded-2xl bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 text-base font-bold text-white shadow-lg hover:opacity-90">
+                  <Button asChild size="lg" className="mt-6 h-13 w-full rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-lg hover:bg-primary/90">
                     <a href={providerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 py-3.5">
                       <ExternalLink className="h-5 w-5" /> Открыть оплату снова
                     </a>
@@ -171,7 +171,7 @@ export function ClientPaymentWaitPage() {
                   {text.paidDesc}
                 </motion.p>
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-6 w-full">
-                  <Button asChild size="lg" className="h-13 w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 text-base font-bold text-white shadow-lg hover:opacity-90">
+                  <Button asChild size="lg" className="h-13 w-full rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-lg hover:bg-primary/90">
                     <Link to="/cabinet/dashboard" className="inline-flex items-center justify-center gap-2 py-3.5">
                       Перейти в кабинет <ArrowRight className="h-5 w-5" />
                     </Link>

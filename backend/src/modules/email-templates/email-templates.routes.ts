@@ -18,7 +18,7 @@ import { z } from "zod";
 import { prisma } from "../../db.js";
 import { requireAuth, requireAdminSection } from "../auth/middleware.js";
 import { logAdmin } from "../audit/audit.service.js";
-import { TEMPLATES, getStoredTemplate, renderTemplate, subjectKey, bodyKey } from "./email-templates.service.js";
+import { TEMPLATES, getStoredTemplate, renderStoredTemplate, subjectKey, bodyKey } from "./email-templates.service.js";
 
 function asyncRoute(fn: (req: express.Request, res: express.Response) => Promise<void | express.Response>) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -83,6 +83,8 @@ emailTemplatesRouter.put(
 
 const previewSchema = z.object({
   vars: z.record(z.string()).optional(),
+  subject: z.string().min(1).max(500).optional(),
+  body: z.string().min(1).max(50_000).optional(),
 });
 
 emailTemplatesRouter.post(
@@ -100,10 +102,16 @@ emailTemplatesRouter.post(
     // В превью/тесте подставляем РЕАЛЬНОЕ имя бренда из настроек вместо example-заглушки.
     if ("serviceName" in exampleVars && cfgForVars.serviceName) exampleVars.serviceName = cfgForVars.serviceName;
     const vars = { ...exampleVars, ...(parsed.data.vars ?? {}) };
+    const previewItem = {
+      ...item,
+      subject: parsed.data.subject ?? item.subject,
+      body: parsed.data.body ?? item.body,
+    };
+    const rendered = renderStoredTemplate(previewItem, vars);
 
     return res.json({
-      subject: renderTemplate(item.subject, vars),
-      body: renderTemplate(item.body, vars),
+      subject: rendered.subject,
+      body: rendered.body,
       vars,
     });
   }),
@@ -130,8 +138,7 @@ emailTemplatesRouter.post(
     if ("serviceName" in exampleVars && cfgForVars.serviceName) exampleVars.serviceName = cfgForVars.serviceName;
     const vars = { ...exampleVars, ...(parsed.data.vars ?? {}) };
 
-    const subject = renderTemplate(item.subject, vars);
-    const body = renderTemplate(item.body, vars);
+    const { subject, body } = renderStoredTemplate(item, vars);
 
     try {
       const { sendEmail } = await import("../mail/mail.service.js");

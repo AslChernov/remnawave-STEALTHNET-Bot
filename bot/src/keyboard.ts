@@ -15,9 +15,11 @@ interface InlineButton {
 
 type WebAppButton = { text: string; web_app: { url: string }; icon_custom_emoji_id?: string; style?: ButtonStyle };
 type UrlButton = { text: string; url: string; icon_custom_emoji_id?: string; style?: ButtonStyle };
-export type InlineMarkup = { inline_keyboard: (InlineButton | WebAppButton | UrlButton)[][] };
+type CopyTextButton = { text: string; copy_text: { text: string }; icon_custom_emoji_id?: string; style?: ButtonStyle };
+export type InlineMarkup = { inline_keyboard: (InlineButton | WebAppButton | UrlButton | CopyTextButton)[][] };
 
 export type BotButtonConfig = { id: string; visible: boolean; label: string; order: number; style?: string; iconCustomEmojiId?: string; onePerRow?: boolean };
+type BotEmojiMap = Record<string, { unicode?: string | null; tgEmojiId?: string | null }>;
 
 // ─── кастомные названия платёжных провайдеров ────────
 // Админ настраивает в /admin/settings → «Порядок и названия платёжных методов».
@@ -92,6 +94,19 @@ function btn(text: string, data: string, style?: ButtonStyle | null, iconCustomE
   return b;
 }
 
+function labelWithEmojiKey(
+  botEmojis: BotEmojiMap | null | undefined,
+  key: string,
+  fallbackUnicode: string,
+  label: string,
+): { text: string; iconCustomEmojiId?: string } {
+  const entry = botEmojis?.[key];
+  const iconCustomEmojiId = entry?.tgEmojiId?.trim() || undefined;
+  if (iconCustomEmojiId) return { text: stripLeadingEmoji(label), iconCustomEmojiId };
+  const unicode = entry?.unicode?.trim() || fallbackUnicode;
+  return { text: `${unicode} ${stripLeadingEmoji(label)}`.trim() };
+}
+
 function resolveStyle(configured: ButtonStyle | undefined | null, fallback: ButtonStyle): ButtonStyle | undefined {
   if (configured === null) return fallback;
   return configured;
@@ -110,6 +125,7 @@ const MENU_IDS: Record<string, string> = {
   trial: "menu:trial",
   vpn: "menu:vpn",
   support: "menu:support",
+  docs: "menu:docs",
   promocode: "menu:promocode",
   extra_options: "menu:extra_options",
   gift: "menu:gift",
@@ -133,11 +149,12 @@ const DEFAULT_BUTTONS: BotButtonConfig[] = [
   // T11 (11.05.2026): эмодзи ↔️ → 👥 по эталону скрина 1.
   { id: "referral", visible: true, label: "👥 Реферальная программа", order: 3, style: "primary" },
   { id: "trial", visible: true, label: "🎁 Бесплатный Тест", order: 4, style: "success" },
-  { id: "vpn", visible: true, label: "🌐 Подключиться к VPN", order: 5, style: "danger", onePerRow: true },
+  { id: "vpn", visible: true, label: "🌐 Подключиться", order: 5, style: "danger", onePerRow: true },
   { id: "cabinet", visible: true, label: "🌐 Web Кабинет", order: 6, style: "primary" },
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary" },
   // T11 (11.05.2026): «🆘 Поддержка» → «⭕ Помощь» по эталону скрина 1.
   { id: "support", visible: true, label: "⭕ Помощь", order: 7, style: "primary" },
+  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "primary" },
   { id: "promocode", visible: true, label: "🎟️ Промокод", order: 8, style: "primary" },
   { id: "gift", visible: true, label: "🎁 Подарки", order: 8.5, style: "primary" },
   { id: "extra_options", visible: true, label: "➕ Доп. опции", order: 9, style: "primary" },
@@ -180,6 +197,8 @@ export function mainMenu(opts: {
   appUrl: string | null;
   botButtons?: BotButtonConfig[] | null;
   botBackLabel?: string | null;
+  /** Эмодзи из публичного конфига; нужны для runtime-кнопок старых установок. */
+  botEmojis?: BotEmojiMap | null;
   hasSupportLinks?: boolean;
   showTickets?: boolean;
   showExtraOptions?: boolean;
@@ -194,6 +213,34 @@ export function mainMenu(opts: {
   let list = fromConfig ? [...configButtons] : [...DEFAULT_BUTTONS];
   if (fromConfig && !list.some((b) => b.id === "devices")) {
     list.push({ id: "devices", visible: true, label: "📱 Устройства", order: 1.5, style: "primary" });
+  }
+  // Существующие установки хранят собственный bot_buttons без новой кнопки.
+  // Добавляем «Документы» на уровне runtime сразу после фактической позиции
+  // «Поддержки», чтобы перенос применился без ручного сброса настроек меню.
+  if (fromConfig && !list.some((b) => b.id === "docs")) {
+    const support = list.find((b) => b.id === "support");
+    const documentsLabel = labelWithEmojiKey(opts.botEmojis, "DOCUMENTS", "📄", "Документы");
+    list.push({
+      id: "docs",
+      visible: true,
+      label: documentsLabel.text,
+      order: (support?.order ?? 7) + 0.1,
+      style: support?.style ?? "primary",
+      iconCustomEmojiId: documentsLabel.iconCustomEmojiId,
+    });
+  }
+  // Если API уже вернул кнопку, но без premium ID (например, она была
+  // автоматически добавлена к старому bot_buttons), восстанавливаем иконку
+  // из единого ключа DOCUMENTS, не меняя пользовательское название кнопки.
+  const documentsIndex = list.findIndex((b) => b.id === "docs");
+  if (documentsIndex >= 0 && !list[documentsIndex]?.iconCustomEmojiId) {
+    const documents = list[documentsIndex]!;
+    const documentsLabel = labelWithEmojiKey(opts.botEmojis, "DOCUMENTS", "📄", documents.label);
+    list[documentsIndex] = {
+      ...documents,
+      label: documentsLabel.text,
+      iconCustomEmojiId: documentsLabel.iconCustomEmojiId,
+    };
   }
   // Auto-add «Мои подписки» если её нет в админ-конфиге (новая кнопка,
   // в существующих инсталляциях её ещё не было — fallback не даёт её потерять).
@@ -223,6 +270,7 @@ export function mainMenu(opts: {
       if (b.id === "cabinet") return !!opts.appUrl?.trim();
       if (b.id === "tickets") return opts.showTickets === true && !!opts.appUrl?.trim();
       if (b.id === "support") return !!opts.hasSupportLinks;
+      if (b.id === "docs") return !!opts.hasSupportLinks;
       if (b.id === "extra_options") return opts.showExtraOptions === true;
       if (b.id === "gift") return opts.showGift === true;
       return true;
@@ -257,11 +305,14 @@ export function mainMenu(opts: {
         items.push({ node: u, onePerRow });
       }
     } else if (b.id === "vpn") {
-      // кнопка «🔌 Подключиться» теперь ВСЕГДА callback `menu:vpn`,
-      // а не прямой URL/WebApp. Внутри handler решает: 1 подписка → выдача ссылки,
-      // 2+ подписок → picker. Раньше была URL/WebApp напрямую → handler не отрабатывал →
-      // у юзеров с несколькими подписками не было выбора.
-      items.push({ node: btn(b.label, MENU_IDS[b.id], styleForBtn, iconId), onePerRow });
+      if (base) {
+        const w: WebAppButton = { text: labelForIcon, web_app: { url: `${base}/cabinet/subscribe` } };
+        if (iconId) w.icon_custom_emoji_id = iconId;
+        if (styleForBtn) w.style = styleForBtn;
+        items.push({ node: w, onePerRow });
+      } else {
+        items.push({ node: btn(b.label, MENU_IDS[b.id], styleForBtn, iconId), onePerRow });
+      }
     } else if (b.id === "tickets" && base) {
       const w: WebAppButton = { text: labelForIcon, web_app: { url: `${base}/cabinet/tickets` } };
       if (iconId) w.icon_custom_emoji_id = iconId;
@@ -299,8 +350,8 @@ const DEFAULT_BACK_LABEL = "🏠 Главное меню";
  * T11 (11.05.2026) — двухуровневое меню Помощи по эталону скринов 15/16.
  * Скрин 15 (главный экран Помощи) — короткие кнопки:
  *   - 🧑‍💼 Написать в поддержку (URL → supportLink)
- *   - 📄 Документы (callback → menu:docs)
  *   - 🏠 Главное меню
+ * Кнопка «Документы» перенесена в главное меню сразу после «Поддержки».
  */
 export function helpMainMenu(
   links: { support?: string | null },
@@ -308,13 +359,18 @@ export function helpMainMenu(
   backStyle?: string,
   emojiIds?: InnerEmojiIds,
   lang = "ru",
+  botEmojis?: BotEmojiMap | null,
 ): InlineMarkup {
   const back = (backLabel && backLabel.trim()) || _t("back_to_menu", lang);
   const backSty = resolveStyle(toStyle(backStyle), "danger");
   const rows: (InlineButton | UrlButton)[][] = [];
   const support = (links.support ?? "").trim();
-  if (support) rows.push([{ text: "🧑‍💼 Написать в поддержку", url: support }]);
-  rows.push([btn("📄 Документы", "menu:docs", undefined, undefined)]);
+  if (support) {
+    const supportLabel = labelWithEmojiKey(botEmojis, "SUPPORT", "🧑‍💼", "Написать в поддержку");
+    const supportButton: UrlButton = { text: supportLabel.text, url: support };
+    if (supportLabel.iconCustomEmojiId) supportButton.icon_custom_emoji_id = supportLabel.iconCustomEmojiId;
+    rows.push([supportButton]);
+  }
   rows.push([btn(back, "menu:main", backSty, emojiIds?.back)]);
   return { inline_keyboard: rows };
 }

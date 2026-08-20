@@ -483,7 +483,7 @@ export async function activateTariffForClient(
         console.error("[tariff-activation] Remna createUser failed:", createRes.error, createRes.status);
       }
     }
-    if (!existingUuid) return { ok: false, error: "Ошибка создания пользователя VPN", status: 502 };
+    if (!existingUuid) return { ok: false, error: "Ошибка создания пользователя Remna", status: 502 };
 
     const remnaUserData = (await remnaGetUser(existingUuid)).data;
     const currentSquads = extractCurrentSquads(remnaUserData);
@@ -625,6 +625,8 @@ export async function extendSecondarySubscription(
    *  тот же Remnawave-UUID → ссылка подписки НЕ меняется), НО остаток дней НЕ переносится
    *  (convertedDays=0) — старые дни сгорают, тариф начинается с нуля. */
   hardReplace?: boolean,
+  /** Выбранные в платеже extraDevices являются итоговым значением, а не добавкой к уже сохраненным. */
+  replaceExtraDevices?: boolean,
 ): Promise<ActivationResult> {
   if (!isRemnaConfigured()) return { ok: false, error: "Сервис временно недоступен", status: 503 };
 
@@ -649,9 +651,18 @@ export async function extendSecondarySubscription(
   // (client.routes считает calcExtrasPrice для ЛЮБОЙ покупки).
   const maxExtra = Math.max(0, tariff.maxExtraDevices ?? 0);
   const newExtras = Math.min(Math.max(0, Math.floor(extraDevices ?? 0)), maxExtra);
-  // существующие extras подписки: остаются или убираются по removeExtrasAfter.
-  const keptExtras = removeExtrasAfter ? 0 : (sec.extraDevices ?? 0);
-  const keptExtrasMonthly = removeExtrasAfter ? 0 : (sec.extraDevicesMonthlyPrice ?? 0);
+  // конвертация ТРИАЛА — это всегда переход (convertMode):
+  // сквады заменяются на сквады целевого тарифа (уход с триального сквада),
+  // трафик начинается заново. Остаток бесплатных дней не конвертируется
+  // (currentPricePerDay у триала нет → computeConvertedDays вернёт 0).
+  const isTrialConversion = sec.trialId != null;
+  const effectiveConvert = convertMode || isTrialConversion || hardReplace;
+
+  // При смене/замене тарифа выбранный пакет устройств задаёт новое значение целиком.
+  // Иначе PRO 5 (extras=4) -> BASE 5 (extras=4) превращается в 1 + 4 + 4 = 9.
+  const replaceExistingExtras = effectiveConvert || removeExtrasAfter || replaceExtraDevices;
+  const keptExtras = replaceExistingExtras ? 0 : (sec.extraDevices ?? 0);
+  const keptExtrasMonthly = replaceExistingExtras ? 0 : (sec.extraDevicesMonthlyPrice ?? 0);
   // месячная ставка новых extras — для будущих продлений (формула option.price + monthly × days/30).
   const newExtrasMonthly = newExtras > 0
     ? applyExtraDevicesPrice(
@@ -672,17 +683,10 @@ export async function extendSecondarySubscription(
 
   const userRes = await remnaGetUser(sec.remnawaveUuid);
   if (userRes.error || !userRes.data) {
-    return { ok: false, error: "Пользователь VPN для этой подписки не найден", status: 404 };
+    return { ok: false, error: "Пользователь Remna для этой подписки не найден", status: 404 };
   }
   const currentExpireAt = extractCurrentExpireAt(userRes.data);
   const currentSquads = extractCurrentSquads(userRes.data);
-
-  // конвертация ТРИАЛА — это всегда переход (convertMode):
-  // сквады заменяются на сквады целевого тарифа (уход с триального сквада),
-  // трафик начинается заново. Остаток бесплатных дней не конвертируется
-  // (currentPricePerDay у триала нет → computeConvertedDays вернёт 0).
-  const isTrialConversion = sec.trialId != null;
-  const effectiveConvert = convertMode || isTrialConversion || hardReplace;
 
   // ── Конвертация: остаток дней переносится pro-rata по ставке, отсчёт от «сейчас» ──
   //
@@ -704,14 +708,14 @@ export async function extendSecondarySubscription(
     } else {
       const newPrice = selectedOption?.price ?? tariff.price ?? 0;
       const newBasePerDay = effectiveDays > 0 ? newPrice / effectiveDays : 0;
-      const extrasPerDay = (sec.extraDevices ?? 0) > 0 ? (sec.extraDevicesMonthlyPrice ?? 0) / 30 : 0;
-      const keepExtras = !removeExtrasAfter && extrasPerDay > 0;
+      const oldExtrasPerDay = (sec.extraDevices ?? 0) > 0 ? (sec.extraDevicesMonthlyPrice ?? 0) / 30 : 0;
+      const newExtrasPerDay = effectiveExtrasMonthly > 0 ? effectiveExtrasMonthly / 30 : 0;
       // Старая ПОЛНАЯ ставка (база + устройства).
       const oldFullPerDay = sec.currentPricePerDay != null
-        ? sec.currentPricePerDay + extrasPerDay
-        : (extrasPerDay > 0 ? extrasPerDay : null);
-      // Новая ставка: с устройствами, если юзер их оставляет.
-      const newFullPerDay = newBasePerDay + (keepExtras ? extrasPerDay : 0);
+        ? sec.currentPricePerDay + oldExtrasPerDay
+        : (oldExtrasPerDay > 0 ? oldExtrasPerDay : null);
+      // Новая ставка: базовый тариф + новый выбранный пакет устройств.
+      const newFullPerDay = newBasePerDay + newExtrasPerDay;
       convertedDays = computeConvertedDays({
         remainingDays,
         oldPricePerDay: oldFullPerDay,
@@ -1014,7 +1018,7 @@ export async function activateTariffByPaymentId(paymentId: string): Promise<Acti
         internalSquadUuids: tariff.internalSquadUuids,
         trafficResetMode: tariff.trafficResetMode ?? undefined,
         price: selectedOption?.price ?? tariff.price,
-      }, selectedOption, payment.deviceCount ?? undefined, removeExtrasAfter);
+      }, selectedOption, payment.deviceCount ?? undefined, removeExtrasAfter, undefined, undefined, targetSub?.tariffId === tariff.id && payment.deviceCount != null);
       if (result.ok) {
         await prisma.payment.update({ where: { id: payment.id }, data: { subscriptionId: extendsSecondaryId } }).catch(() => {});
         await resetOneTimeDiscount();
@@ -1051,7 +1055,7 @@ export async function activateTariffByPaymentId(paymentId: string): Promise<Acti
           trafficResetMode: tariff.trafficResetMode ?? undefined,
           price: selectedOption?.price ?? tariff.price,
         // тот же тариф → обычное продление (стек); другой → convert (pro-rata) или hardReplace (с нуля).
-        }, selectedOption, payment.deviceCount ?? undefined, removeExtrasOnConvert, convertModeFlag, hardReplace);
+        }, selectedOption, payment.deviceCount ?? undefined, removeExtrasOnConvert, convertModeFlag, hardReplace, convertible.sameTariff && payment.deviceCount != null);
         if (result.ok) {
           // фиксируем конвертацию в платеже: и привязку подписки, и детали для отчётности.
           const meta = (() => {

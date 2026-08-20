@@ -418,16 +418,16 @@ export function ClientCustomBuildPage() {
                   size="lg"
                   onClick={payByBalance}
                   disabled={payLoading}
-                  className={cn("w-full shadow-lg border-0 group relative overflow-hidden", isMobileOrMiniapp ? "justify-between px-6 h-16 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400" : "gap-2 h-14 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300")}
+                  className={cn("w-full shadow-lg border-0 group relative overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90", isMobileOrMiniapp ? "justify-between px-6 h-16 rounded-2xl" : "gap-2 h-14 rounded-xl hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300")}
                 >
                   {!isMobileOrMiniapp && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />}
                   {isMobileOrMiniapp ? (
                     <>
                       <div className="flex items-center gap-3">
-                        {payLoading ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Wallet className="h-6 w-6 text-white" />}
-                        <span className="text-base font-bold text-white">Оплатить с баланса</span>
+                        {payLoading ? <Loader2 className="h-6 w-6 text-primary-foreground animate-spin" /> : <Wallet className="h-6 w-6 text-primary-foreground" />}
+                        <span className="text-base font-bold text-primary-foreground">Оплатить с баланса</span>
                       </div>
-                      <span className="text-white/80 font-mono font-medium bg-black/20 px-2 py-1 rounded-lg">
+                      <span className="text-primary-foreground/80 font-mono font-medium bg-black/20 px-2 py-1 rounded-lg">
                         {formatMoney(balance, cb.currency)}
                       </span>
                     </>

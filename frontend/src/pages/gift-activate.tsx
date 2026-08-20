@@ -198,7 +198,7 @@ export function GiftActivatePage() {
 
                 <motion.div variants={childVariants} className="w-full bg-background/50 rounded-2xl p-4 mb-6 border border-white/5 backdrop-blur-md">
                   <div className="text-sm text-muted-foreground mb-1">Тариф</div>
-                  <div className="text-xl font-bold text-foreground">{giftInfo.tariffName || "Подписка VPN"}</div>
+                  <div className="text-xl font-bold text-foreground">{giftInfo.tariffName || "Подписка"}</div>
                   
                   <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm">
                     <div className="flex items-center text-muted-foreground">

@@ -17,9 +17,9 @@ export default defineConfig({
                 "apple-touch-icon.png",
             ],
             manifest: {
-                name: "STEALTHNET",
-                short_name: "STEALTHNET",
-                description: "Личный кабинет и админка STEALTHNET — VPN на базе Remnawave",
+                name: "ALTETH",
+                short_name: "ALTETH",
+                description: "Интернет — каким он должен быть.",
                 lang: "ru",
                 start_url: "/cabinet",
                 scope: "/",

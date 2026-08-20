@@ -14,7 +14,7 @@
  * редактируется «впрок» (отправитель ещё не реализован); UI честно показывает бейдж.
  *
  * defaultBody — адаптивная HTML-вёрстка (table-based + inline-стили) для максимальной
- * совместимости с Gmail / Outlook / Apple Mail. Акцент #ec4899 (бренд STEALTHNET);
+ * совместимости с Gmail / Outlook / Apple Mail.
  * админ может переопределить любой шаблон в разделе «Почта → Шаблоны».
  */
 
@@ -31,11 +31,22 @@ export interface TemplateDef {
   wired: boolean;
 }
 
+const EMAIL_ACCENT = "#3b82f6";
+const EMAIL_ACCENT_DARK = "#2563eb";
+const EMAIL_BACKGROUND = "#f4f7ff";
+const EMAIL_BORDER = "#e4ecff";
+
 /**
  * Собирает готовое HTML-письмо из блоков (шапка/заголовок/текст + внутренности + подпись).
  * inner — центральная часть (кнопка, ссылка-fallback, коробка-квитанция и т.п.).
  */
-function layout(opts: { heading: string; intro: string; inner: string; note?: string }): string {
+function layout(opts: { heading?: string; intro?: string; inner: string; note?: string }): string {
+  const heading = opts.heading
+    ? `<h1 style="margin:0 0 8px;font-size:21px;line-height:1.3;font-weight:700;color:#0f172a;">${opts.heading}</h1>`
+    : "";
+  const intro = opts.intro
+    ? `<p style="margin:0 0 22px;font-size:15px;line-height:1.62;color:#4b5563;">${opts.intro}</p>`
+    : "";
   const note = opts.note
     ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.55;color:#9ca3af;">${opts.note}</p>`
     : "";
@@ -48,21 +59,21 @@ function layout(opts: { heading: string; intro: string; inner: string; note?: st
 <meta name="supported-color-schemes" content="light">
 <title>{{serviceName}}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;-webkit-text-size-adjust:100%;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f7;margin:0;padding:0;">
+<body style="margin:0;padding:0;background-color:${EMAIL_BACKGROUND};-webkit-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${EMAIL_BACKGROUND};margin:0;padding:0;">
 <tr>
 <td align="center" style="padding:32px 14px;">
-<table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;background-color:#ffffff;border-radius:16px;border:1px solid #ececef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;background-color:#ffffff;border-radius:16px;border:1px solid ${EMAIL_BORDER};box-shadow:0 18px 60px rgba(37,99,235,0.08);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <tr>
 <td style="padding:30px 34px 0;">
 <div style="font-size:19px;font-weight:800;letter-spacing:-0.02em;color:#0f172a;">{{serviceName}}</div>
-<div style="height:3px;line-height:3px;font-size:0;width:38px;background-color:#ec4899;border-radius:2px;margin-top:11px;">&nbsp;</div>
+<div style="height:3px;line-height:3px;font-size:0;width:38px;background-color:${EMAIL_ACCENT};border-radius:2px;margin-top:11px;">&nbsp;</div>
 </td>
 </tr>
 <tr>
 <td style="padding:18px 34px 4px;">
-<h1 style="margin:0 0 8px;font-size:21px;line-height:1.3;font-weight:700;color:#0f172a;">${opts.heading}</h1>
-<p style="margin:0 0 22px;font-size:15px;line-height:1.62;color:#4b5563;">${opts.intro}</p>
+${heading}
+${intro}
 ${opts.inner}
 ${note}
 </td>
@@ -86,7 +97,7 @@ ${note}
 function button(url: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;">
 <tr>
-<td align="center" style="border-radius:11px;background-color:#ec4899;">
+<td align="center" style="border-radius:11px;background-color:${EMAIL_ACCENT};">
 <a href="${url}" target="_blank" style="display:inline-block;padding:13px 30px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:11px;">${label}</a>
 </td>
 </tr>
@@ -96,7 +107,7 @@ function button(url: string, label: string): string {
 /** Ссылка-fallback под кнопкой (на случай, если кнопка не нажимается). */
 function linkFallback(url: string): string {
   return `<p style="margin:22px 0 4px;font-size:13px;color:#6b7280;">Или откройте ссылку вручную:</p>
-<p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;"><a href="${url}" target="_blank" style="color:#ec4899;text-decoration:none;">${url}</a></p>`;
+<p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;"><a href="${url}" target="_blank" style="color:${EMAIL_ACCENT_DARK};text-decoration:none;">${url}</a></p>`;
 }
 
 /** Строка в коробке-квитанции. */
@@ -106,11 +117,48 @@ function row(label: string, value: string): string {
 
 /** Коробка-квитанция (для писем без кнопки). */
 function infoBox(rows: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f8fb;border:1px solid #ececef;border-radius:12px;">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8faff;border:1px solid ${EMAIL_BORDER};border-radius:12px;">
 <tr><td style="padding:14px 18px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
 </td></tr>
 </table>`;
+}
+
+function isFullHtmlDocument(body: string): boolean {
+  return /<!doctype\s+html|<html[\s>]|<body[\s>]/i.test(body.trim());
+}
+
+function wrapBodyIfNeeded(body: string): string {
+  if (isFullHtmlDocument(body)) return body;
+  return layout({ inner: body });
+}
+
+function isLegacyCodeVerificationBody(key: string, body: string): boolean {
+  return key === "email_verification"
+    && /\{\{(?:code|minutes)\}\}/.test(body)
+    && !/\{\{verifyUrl\}\}/.test(body);
+}
+
+function bodyWithCompatibility(def: TemplateDef, storedBody: string | undefined): string {
+  if (!storedBody) return def.defaultBody;
+  if (isLegacyCodeVerificationBody(def.key, storedBody)) return def.defaultBody;
+  return storedBody;
+}
+
+function varsWithCompatibility(key: string, vars: Record<string, string>): Record<string, string> {
+  const next = { ...vars };
+  if (key === "email_verification" || key === "link_email") {
+    if (!next.minutes && next.hours) {
+      const hours = Number(next.hours);
+      next.minutes = Number.isFinite(hours) ? String(Math.round(hours * 60)) : next.hours;
+    }
+    if (!next.hours && next.minutes) {
+      const minutes = Number(next.minutes);
+      next.hours = Number.isFinite(minutes) ? String(Math.max(1, Math.ceil(minutes / 60))) : next.minutes;
+    }
+    if (!next.code && next.verifyUrl) next.code = next.verifyUrl;
+  }
+  return next;
 }
 
 export const TEMPLATES: TemplateDef[] = [
@@ -121,7 +169,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "email", example: "user@example.com", required: true },
       { name: "loginUrl", example: "https://stealthnet.app/login", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Добро пожаловать в {{serviceName}}!",
     defaultBody: layout({
@@ -139,7 +187,8 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "verifyUrl", example: "https://stealthnet.app/cabinet/verify-email?token=...", required: true },
       { name: "hours", example: "24", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "minutes", example: "1440" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Подтверждение регистрации — {{serviceName}}",
     defaultBody: layout({
@@ -157,7 +206,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "verifyUrl", example: "https://stealthnet.app/cabinet/verify-link-email?token=...", required: true },
       { name: "hours", example: "24", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Привязка почты к аккаунту — {{serviceName}}",
     defaultBody: layout({
@@ -175,7 +224,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "resetUrl", example: "https://stealthnet.app/reset?token=...", required: true },
       { name: "minutes", example: "60", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Сброс пароля — {{serviceName}}",
     defaultBody: layout({
@@ -195,7 +244,7 @@ export const TEMPLATES: TemplateDef[] = [
       { name: "currency", example: "USD", required: true },
       { name: "tariffName", example: "1 месяц", required: true },
       { name: "expiresAt", example: "2026-06-05", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Оплата подтверждена — {{serviceName}}",
     defaultBody: layout({
@@ -217,7 +266,7 @@ export const TEMPLATES: TemplateDef[] = [
       { name: "tariffName", example: "1 месяц", required: true },
       { name: "daysLeft", example: "3", required: true },
       { name: "renewUrl", example: "https://stealthnet.app/renew", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Подписка истекает через {{daysLeft}} дн. — {{serviceName}}",
     defaultBody: layout({
@@ -233,7 +282,7 @@ export const TEMPLATES: TemplateDef[] = [
     description: "В день истечения",
     variables: [
       { name: "tariffName", example: "1 месяц", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "ALTETH" },
     ],
     defaultSubject: "Подписка истекла — {{serviceName}}",
     defaultBody: layout({
@@ -274,7 +323,7 @@ export async function getStoredTemplate(key: string): Promise<StoredTemplate | n
     description: def.description,
     variables: def.variables,
     subject: s?.value ?? def.defaultSubject,
-    body: b?.value ?? def.defaultBody,
+    body: bodyWithCompatibility(def, b?.value),
     isDefault: !s && !b,
     wired: def.wired,
   };
@@ -282,6 +331,17 @@ export async function getStoredTemplate(key: string): Promise<StoredTemplate | n
 
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_m, name) => vars[name] ?? `{{${name}}}`);
+}
+
+export function renderStoredTemplate(
+  item: StoredTemplate,
+  vars: Record<string, string>,
+): { subject: string; body: string } {
+  const safeVars = varsWithCompatibility(item.key, vars);
+  return {
+    subject: renderTemplate(item.subject, safeVars),
+    body: renderTemplate(wrapBodyIfNeeded(item.body), safeVars),
+  };
 }
 
 /**
@@ -294,8 +354,5 @@ export async function renderEmailTemplate(
 ): Promise<{ subject: string; body: string } | null> {
   const item = await getStoredTemplate(key);
   if (!item) return null;
-  return {
-    subject: renderTemplate(item.subject, vars),
-    body: renderTemplate(item.body, vars),
-  };
+  return renderStoredTemplate(item, vars);
 }

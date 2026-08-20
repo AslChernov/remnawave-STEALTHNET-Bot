@@ -74,7 +74,7 @@ function formatPrizeLine(prizeType: string, prizeValue: string, balanceCurrency:
   const v = (prizeValue || "").trim();
   if (!v) return "—";
   if (prizeType === "balance") return `${v} ${balanceCurrency} на баланс`;
-  if (prizeType === "vpn_days") return `${v} дней VPN`;
+  if (prizeType === "vpn_days") return `${v} дней доступа`;
   return v;
 }
 
@@ -441,7 +441,7 @@ export async function sendContestDrawResults(contestId: string): Promise<void> {
     if (w.prizeType === "balance" && w.appliedAt) {
       personalLines.push("", "💰 Сумма уже зачислена на ваш баланс в кабинете.");
     } else if (w.prizeType === "vpn_days") {
-      personalLines.push("", "📅 Дни VPN будут начислены администратором в ближайшее время. Проверьте срок подписки.");
+      personalLines.push("", "📅 Дни доступа будут начислены администратором в ближайшее время. Проверьте срок подписки.");
     } else if (w.prizeType === "custom") {
       personalLines.push("", "📞 Свяжитесь с поддержкой чтобы получить приз.");
     }

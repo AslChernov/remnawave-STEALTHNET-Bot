@@ -6,8 +6,21 @@ import { cn } from "@/lib/utils";
 
 type TelegramWebAppMinimal = {
   initData?: string;
-  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  openLink?: (url: string, options?: { try_instant_view?: boolean; try_browser?: string }) => void;
 };
+
+function hasTelegramBridge(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as Window & {
+    TelegramWebviewProxy?: { postEvent?: (eventType: string, eventData: string) => void };
+    external?: { notify?: (message: string) => void };
+  };
+  return (
+    typeof w.TelegramWebviewProxy?.postEvent === "function" ||
+    typeof w.external?.notify === "function" ||
+    window.parent !== window
+  );
+}
 
 function getTelegramMiniApp(): TelegramWebAppMinimal | null {
   if (typeof window === "undefined") return null;
@@ -17,7 +30,7 @@ function getTelegramMiniApp(): TelegramWebAppMinimal | null {
   if (!raw || typeof raw !== "object") return null;
   const webApp = raw as TelegramWebAppMinimal;
   if (typeof webApp.openLink !== "function") return null;
-  if (!webApp.initData || !webApp.initData.trim()) return null;
+  if (!hasTelegramBridge()) return null;
   return webApp;
 }
 
@@ -54,9 +67,12 @@ export function PayNowPanel({ url, provider, onBack, onPaid, compact }: PayNowPa
     if (miniApp) {
       e.preventDefault();
       try {
-        miniApp.openLink!(url);
+        miniApp.openLink!(url, { try_instant_view: false });
+        if (onPaid) window.setTimeout(onPaid, 600);
+        return;
       } catch {
         window.location.assign(url);
+        return;
       }
     }
     if (onPaid) onPaid();
@@ -98,7 +114,7 @@ export function PayNowPanel({ url, provider, onBack, onPaid, compact }: PayNowPa
         asChild
         size="lg"
         className={cn(
-          "w-full font-bold shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200 active:scale-[0.98]",
+          "w-full font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 active:scale-[0.98]",
           compact ? "h-16 rounded-2xl text-base" : "h-14 rounded-xl text-base",
         )}
       >

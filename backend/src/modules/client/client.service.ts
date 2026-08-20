@@ -119,7 +119,7 @@ const SYSTEM_CONFIG_KEYS = [
   "platega_merchant_id", "platega_secret", "platega_methods", "payment_providers_config",
   // Webhook secret для проверки HMAC-подписи от Platega (security fix против форджинга платежей).
   "platega_webhook_secret",
-  "gramads_api_key", // Gramads.net — ключ для рекламного кабинета "Продвижение VPN"
+  "gramads_api_key", // Gramads.net — ключ для рекламного кабинета "Продвижение сервиса"
   "yoomoney_client_id", "yoomoney_client_secret", "yoomoney_receiver_wallet", "yoomoney_notification_secret",
   "yookassa_shop_id", "yookassa_secret_key", "yookassa_recurring_enabled",
   // Basic-auth credentials для webhook YooKassa (security fix против форджинга платежей).
@@ -194,8 +194,8 @@ const SYSTEM_CONFIG_KEYS = [
   "email_domain_blocklist", // Дополнительный список доменов через запятую (расширяет встроенный)
   "email_pattern_blocklist", // Regex-паттерны (по строке на каждый), блокируют локалпарт email
   "signup_max_per_ip_per_hour", // Сколько регистраций с одного IP в час разрешено (default: 3)
-  "happ_crypt_enabled", // Шифровать subscriptionUrl в happ://crypt4/... (по умолчанию false: ссылка длинная)
-  "use_remna_subscription_page", // Кнопка VPN в боте ведёт на страницу подписки Remna вместо кабинета: true/false
+  "happ_crypt_enabled", // Шифровать subscriptionUrl в happ://crypt5/... через Happ API (по умолчанию true)
+  "use_remna_subscription_page", // Кнопка подключения в боте ведёт на страницу подписки Remna вместо кабинета: true/false
   "ai_chat_enabled", // AI-чат в кабинете включён: true/false
   // Гибкий тариф (собери сам): цена за день, устройство, трафик или безлимит, сквад
   "custom_build_enabled",
@@ -284,7 +284,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonConfig[] = [
   { id: "topup", visible: true, label: "💳 Пополнить баланс", order: 2, style: "success", emojiKey: "CARD" },
   { id: "referral", visible: true, label: "🔗 Реферальная программа", order: 3, style: "primary", emojiKey: "LINK" },
   { id: "trial", visible: true, label: "🎁 Попробовать бесплатно", order: 4, style: "success", emojiKey: "TRIAL" },
-  { id: "vpn", visible: true, label: "🌐 Подключиться к VPN", order: 5, style: "danger", emojiKey: "SERVERS", onePerRow: true },
+  { id: "vpn", visible: true, label: "🌐 Подключиться", order: 5, style: "danger", emojiKey: "SERVERS", onePerRow: true },
   { id: "cabinet", visible: true, label: "🌐 Web Кабинет", order: 6, style: "primary", emojiKey: "SERVERS" },
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary", emojiKey: "NOTE" },
   { id: "support", visible: true, label: "🆘 Поддержка", order: 7, style: "primary", emojiKey: "NOTE" },
@@ -607,7 +607,7 @@ async function loadSystemConfigFromDb() {
     trialSquadUuid: map.trial_squad_uuid || null,
     trialDeviceLimit: map.trial_device_limit != null && map.trial_device_limit !== "" ? parseInt(map.trial_device_limit, 10) : null,
     trialTrafficLimitBytes: map.trial_traffic_limit != null && map.trial_traffic_limit !== "" ? parseInt(map.trial_traffic_limit, 10) : null,
-    serviceName: map.service_name || "STEALTHNET",
+    serviceName: map.service_name || "ALTETH",
     logo: map.logo || null,
     logoBot: map.logo_bot || null,
     favicon: map.favicon || null,
@@ -684,7 +684,7 @@ async function loadSystemConfigFromDb() {
     groqFallback1: (map.groq_fallback_1 ?? "").trim() || null,
     groqFallback2: (map.groq_fallback_2 ?? "").trim() || null,
     groqFallback3: (map.groq_fallback_3 ?? "").trim() || null,
-    aiSystemPrompt: map.ai_system_prompt || "Ты — лучший менеджер техподдержки VPN-сервиса. Твоя цель — вежливо, быстро и точно помогать пользователям с настройкой VPN, тарифами и решением технических проблем. Отвечай кратко и по делу.",
+    aiSystemPrompt: map.ai_system_prompt || "Ты — лучший менеджер техподдержки сервиса доступа. Твоя цель — вежливо, быстро и точно помогать пользователям с настройкой подключения, тарифами и решением технических проблем. Отвечай кратко и по делу.",
     skipEmailVerification: map.skip_email_verification === "true" || map.skip_email_verification === "1",
     onboardingEmailRequired: map.onboarding_email_required === "true" || map.onboarding_email_required === "1",
     stealthAccent: (map.stealth_accent ?? "").trim() || null,
@@ -701,11 +701,10 @@ async function loadSystemConfigFromDb() {
     /** Лимит регистраций с одного IP в час (default 3) */
     signupMaxPerIpPerHour: Math.max(1, parseInt(map.signup_max_per_ip_per_hour ?? "3", 10) || 3),
     /**
-     * Шифрование subscriptionUrl в happ://crypt4/...
-     * По умолчанию ВЫКЛ: crypt4-ссылки получаются 1500+ символов и в Telegram-сообщении выглядят как простыня.
-     * Включай только если очень нужно скрыть оригинальный URL подписки.
+     * Шифрование subscriptionUrl в happ://crypt5/... через Happ API.
+     * По умолчанию ВКЛ: фронт, бот и кнопки подключения получают короткую зашифрованную ссылку.
      */
-    happCryptEnabled: (map.happ_crypt_enabled ?? "false").trim() === "true",
+    happCryptEnabled: (map.happ_crypt_enabled ?? "true").trim() !== "false",
     useRemnaSubscriptionPage: map.use_remna_subscription_page === "true" || map.use_remna_subscription_page === "1",
     aiChatEnabled: map.ai_chat_enabled !== "false" && map.ai_chat_enabled !== "0",
     customBuildEnabled: map.custom_build_enabled === "true" || map.custom_build_enabled === "1",
@@ -1606,7 +1605,7 @@ export async function getPublicConfig(_forCloneBot?: { markupPercent?: number | 
         } catch { return null; }
       };
       return {
-        heroTitle: l.landingHeroTitle?.trim() || full.serviceName || "VPN",
+        heroTitle: l.landingHeroTitle?.trim() || full.serviceName || "Доступ",
         heroSubtitle: l.landingHeroSubtitle?.trim() || null,
         heroCtaText: (l.landingHeroCtaText ?? "").trim() || "В кабинет",
         heroBadge: (l.landingHeroBadge ?? "").trim() || null,

@@ -23,7 +23,7 @@ import { fmtMsk, isoToMskInputValue, mskInputValueToIso } from "@/lib/datetime";
 const PRIZE_TYPES: { value: ContestPrizeType; label: string }[] = [
   { value: "custom", label: "Свой текст" },
   { value: "balance", label: "Деньги на баланс" },
-  { value: "vpn_days", label: "Дни VPN в подарок" },
+  { value: "vpn_days", label: "Дни доступа в подарок" },
 ];
 
 const DRAW_TYPES: { value: ContestDrawType; label: string }[] = [
