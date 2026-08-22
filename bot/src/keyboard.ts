@@ -154,7 +154,7 @@ const DEFAULT_BUTTONS: BotButtonConfig[] = [
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary" },
   // T11 (11.05.2026): «🆘 Поддержка» → «⭕ Помощь» по эталону скрина 1.
   { id: "support", visible: true, label: "⭕ Помощь", order: 7, style: "primary" },
-  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "primary" },
+  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "" },
   { id: "promocode", visible: true, label: "🎟️ Промокод", order: 8, style: "primary" },
   { id: "gift", visible: true, label: "🎁 Подарки", order: 8.5, style: "primary" },
   { id: "extra_options", visible: true, label: "➕ Доп. опции", order: 9, style: "primary" },
@@ -225,7 +225,7 @@ export function mainMenu(opts: {
       visible: true,
       label: documentsLabel.text,
       order: (support?.order ?? 7) + 0.1,
-      style: support?.style ?? "primary",
+      style: "",
       iconCustomEmojiId: documentsLabel.iconCustomEmojiId,
     });
   }
@@ -233,6 +233,11 @@ export function mainMenu(opts: {
   // автоматически добавлена к старому bot_buttons), восстанавливаем иконку
   // из единого ключа DOCUMENTS, не меняя пользовательское название кнопки.
   const documentsIndex = list.findIndex((b) => b.id === "docs");
+  // «Документы» — обычное навигационное действие без семантического акцента.
+  // Принудительно снимаем старый primary и для сохранённых конфигураций.
+  if (documentsIndex >= 0) {
+    list[documentsIndex] = { ...list[documentsIndex]!, style: "" };
+  }
   if (documentsIndex >= 0 && !list[documentsIndex]?.iconCustomEmojiId) {
     const documents = list[documentsIndex]!;
     const documentsLabel = labelWithEmojiKey(opts.botEmojis, "DOCUMENTS", "📄", documents.label);

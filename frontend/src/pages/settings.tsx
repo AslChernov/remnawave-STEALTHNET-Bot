@@ -72,7 +72,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonItem[] = [
   { id: "cabinet", visible: true, label: " Web Кабинет", order: 6, style: "primary", emojiKey: "SERVERS" },
   { id: "tickets", visible: true, label: " Тикеты", order: 6.5, style: "primary", emojiKey: "NOTE" },
   { id: "support", visible: true, label: " Поддержка", order: 7, style: "primary", emojiKey: "NOTE" },
-  { id: "docs", visible: true, label: " Документы", order: 7.1, style: "primary", emojiKey: "DOCUMENTS" },
+  { id: "docs", visible: true, label: " Документы", order: 7.1, style: "", emojiKey: "DOCUMENTS" },
   { id: "promocode", visible: true, label: " Промокод", order: 8, style: "primary", emojiKey: "STAR" },
   { id: "gift", visible: true, label: " Подарки", order: 8.5, style: "primary", emojiKey: "TRIAL" },
   { id: "extra_options", visible: true, label: " Доп. опции", order: 9, style: "primary", emojiKey: "PACKAGE" },
@@ -5652,8 +5652,9 @@ function SortableBotButtonCard({
     transition,
   };
 
-  const swatch = BOT_STYLE_OPTIONS.find((o) => o.value === (btn.style ?? ""))?.swatch ?? "bg-slate-400";
-  const styleLabel = BOT_STYLE_OPTIONS.find((o) => o.value === (btn.style ?? ""))?.label ?? "По умолчанию";
+  const effectiveStyle = btn.id === "docs" ? "" : (btn.style ?? "");
+  const swatch = BOT_STYLE_OPTIONS.find((o) => o.value === effectiveStyle)?.swatch ?? "bg-slate-400";
+  const styleLabel = BOT_STYLE_OPTIONS.find((o) => o.value === effectiveStyle)?.label ?? "По умолчанию";
 
   return (
     <div
@@ -5696,9 +5697,9 @@ function SortableBotButtonCard({
           Предпросмотр
         </div>
         <div className={`inline-block px-3 py-1.5 rounded-lg text-sm font-medium ${
-          btn.style === "success" ? "bg-emerald-500/30 text-emerald-100 border border-emerald-500/40"
-          : btn.style === "danger" ? "bg-rose-500/30 text-rose-100 border border-rose-500/40"
-          : btn.style === "primary" ? "bg-sky-500/30 text-sky-100 border border-sky-500/40"
+          effectiveStyle === "success" ? "bg-emerald-500/30 text-emerald-100 border border-emerald-500/40"
+          : effectiveStyle === "danger" ? "bg-rose-500/30 text-rose-100 border border-rose-500/40"
+          : effectiveStyle === "primary" ? "bg-sky-500/30 text-sky-100 border border-sky-500/40"
           : "bg-card text-foreground border border-border"
         }`}>
           {btn.label || "(пустое название)"}
@@ -5727,8 +5728,10 @@ function SortableBotButtonCard({
           <Label className="text-[10px] uppercase text-muted-foreground tracking-wider">Цвет</Label>
           <select
             className="flex h-9 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-            value={btn.style ?? ""}
+            value={effectiveStyle}
             onChange={(e) => onUpdate({ style: e.target.value })}
+            disabled={btn.id === "docs"}
+            title={btn.id === "docs" ? "Кнопка «Документы» всегда без цветового акцента" : undefined}
           >
             {BOT_STYLE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>

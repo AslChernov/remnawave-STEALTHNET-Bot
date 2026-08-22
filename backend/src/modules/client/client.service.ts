@@ -289,7 +289,7 @@ const DEFAULT_BOT_BUTTONS: BotButtonConfig[] = [
   { id: "cabinet", visible: true, label: "🌐 Web Кабинет", order: 6, style: "primary", emojiKey: "SERVERS" },
   { id: "tickets", visible: true, label: "🎫 Тикеты", order: 6.5, style: "primary", emojiKey: "NOTE" },
   { id: "support", visible: true, label: "🆘 Поддержка", order: 7, style: "primary", emojiKey: "NOTE" },
-  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "primary", emojiKey: "DOCUMENTS" },
+  { id: "docs", visible: true, label: "📄 Документы", order: 7.1, style: "", emojiKey: "DOCUMENTS" },
   { id: "promocode", visible: true, label: "🎟️ Промокод", order: 8, style: "primary", emojiKey: "STAR" },
   { id: "extra_options", visible: true, label: "➕ Доп. опции", order: 9, style: "primary", emojiKey: "PACKAGE" },
   // Кастомные кнопки. Раньше добавлялись автоматом в keyboard.ts —
@@ -498,7 +498,8 @@ function parseBotButtons(raw: string | undefined): BotButtonConfig[] {
         visible: typeof o.visible === "boolean" ? o.visible : true,
         label: typeof o.label === "string" && o.label.trim() ? o.label.trim() : def.label,
         order: typeof o.order === "number" ? o.order : (typeof o.order === "string" ? parseFloat(o.order) : i),
-        style: typeof o.style === "string" ? o.style : (def as BotButtonConfig).style ?? "",
+        // «Документы» всегда нейтральные: сбрасываем primary из ранее сохранённых меню.
+        style: id === "docs" ? "" : (typeof o.style === "string" ? o.style : (def as BotButtonConfig).style ?? ""),
         emojiKey: typeof o.emojiKey === "string" ? o.emojiKey.trim() : undefined,
         onePerRow: typeof o.onePerRow === "boolean" ? o.onePerRow : (def as BotButtonConfig).onePerRow,
       };
